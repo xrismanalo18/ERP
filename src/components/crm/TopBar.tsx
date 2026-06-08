@@ -6,7 +6,7 @@ import { useState } from "react";
 const TITLES: Record<CRMView, string> = {
   dashboard: "Home",
   accounts: "Accounts",
-  contacts: "Contacts",
+  
   pipeline: "Opportunities",
   aireview: "AI Deal Review",
   cases: "Cases",

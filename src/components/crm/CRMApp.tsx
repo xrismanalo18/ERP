@@ -7,7 +7,7 @@ import AccountsView from "./AccountsView";
 import PipelineView from "./PipelineView";
 import AIReviewView from "./AIReviewView";
 import CasesView from "./CasesView";
-import ContactsView from "./ContactsView";
+
 import ReportsView from "./ReportsView";
 import ContractAnalyzerView from "./ContractAnalyzerView";
 
@@ -19,7 +19,7 @@ export default function CRMApp() {
     switch (view) {
       case "dashboard":  return <DashboardView />;
       case "accounts":   return <AccountsView />;
-      case "contacts":   return <ContactsView />;
+      
       case "pipeline":   return <PipelineView />;
       case "aireview":   return <AIReviewView />;
       case "cases":      return <CasesView />;
