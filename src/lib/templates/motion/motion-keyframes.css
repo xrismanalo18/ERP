@@ -1,0 +1,287 @@
+/* Reveal-primitive keyframes. Declared globally (not as CSS-module locals)
+ * so that `animation-name: var(--m-anim)` references work — the CSS variable
+ * carries a raw keyframe name, which the browser resolves against the global
+ * keyframe registry. CSS-module hashing would break that lookup.
+ *
+ * Imported once from `src/app/globals.css` so every template renders the
+ * same keyframes regardless of which motion primitives it uses.
+ */
+
+@keyframes m-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes m-fade-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, var(--m-distance, 48px), 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes m-fade-down {
+  from {
+    opacity: 0;
+    transform: translate3d(0, calc(var(--m-distance, 48px) * -1), 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes m-fade-left {
+  from {
+    opacity: 0;
+    transform: translate3d(calc(var(--m-distance, 48px) * -1), 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes m-fade-right {
+  from {
+    opacity: 0;
+    transform: translate3d(var(--m-distance, 48px), 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes m-fade-scale {
+  from {
+    opacity: 0;
+    transform: scale(var(--m-scale, 0.94));
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes m-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(var(--m-scale, 0.86));
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes m-slide-up {
+  from { opacity: 0; transform: translate3d(0, 110%, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes m-slide-down {
+  from { opacity: 0; transform: translate3d(0, -110%, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes m-slide-left {
+  from { opacity: 0; transform: translate3d(-110%, 0, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes m-slide-right {
+  from { opacity: 0; transform: translate3d(110%, 0, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes m-wipe-right {
+  from {
+    opacity: 1;
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes m-wipe-up {
+  from {
+    opacity: 1;
+    clip-path: inset(100% 0 0 0);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes m-mask-up {
+  from {
+    opacity: 1;
+    clip-path: inset(0 0 100% 0);
+    transform: translate3d(0, var(--m-distance, 48px), 0);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes m-mask-right {
+  from {
+    opacity: 1;
+    clip-path: inset(0 0 0 100%);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes m-blur-in {
+  from {
+    opacity: 0;
+    filter: blur(var(--m-blur, 12px));
+    transform: translate3d(0, calc(var(--m-distance, 48px) * 0.4), 0);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0px);
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes m-spotlight {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, var(--m-distance, 48px), 0) scale(var(--m-scale, 0.94));
+    filter: brightness(0.4) blur(var(--m-blur, 6px));
+  }
+  60% {
+    opacity: 1;
+    filter: brightness(1.45) blur(0px);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: brightness(1) blur(0px);
+  }
+}
+
+@keyframes m-drift-in {
+  from {
+    opacity: 0;
+    transform: translate3d(calc(var(--m-distance, 48px) * -0.4), var(--m-distance, 48px), 0) rotate(-2deg);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0);
+  }
+}
+
+@keyframes m-roll-in {
+  from {
+    opacity: 0;
+    transform: translate3d(calc(var(--m-distance, 48px) * -1), 0, 0) rotate(-8deg);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0);
+  }
+}
+
+@keyframes m-skew-in {
+  from {
+    opacity: 0;
+    transform: translate3d(var(--m-distance, 48px), 0, 0) skewX(-12deg);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) skewX(0);
+  }
+}
+
+/* Ticker — copies count is 2 by default. Move by -50% minus half-gap for
+ * a seamless cycle. */
+@keyframes m-ticker-x {
+  from { transform: translate3d(0, 0, 0); }
+  to {
+    transform: translate3d(
+      calc(-50% - (var(--m-ticker-gap, 32px) / 2)),
+      0,
+      0
+    );
+  }
+}
+
+/* Ambient loops — also exposed as Tailwind `animate-*` utilities, but
+ * kept here so they're always emitted even if no utility class is used. */
+
+@keyframes m-pulse-soft {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.78; transform: scale(1.04); }
+}
+
+@keyframes m-pulse-ring {
+  0% {
+    opacity: 0.6;
+    transform: scale(1);
+    box-shadow: 0 0 0 0 currentColor;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.6);
+    box-shadow: 0 0 0 16px transparent;
+  }
+}
+
+@keyframes m-breathe {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(0, -3px, 0) scale(1.012); }
+}
+
+@keyframes m-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes m-drift {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -6px, 0); }
+}
+
+@keyframes m-bob {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0); }
+  50% { transform: translate3d(0, -8px, 0) rotate(1.5deg); }
+}
+
+@keyframes m-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 0 currentColor);
+  }
+  50% {
+    filter: drop-shadow(0 0 18px color-mix(in oklab, currentColor 65%, transparent));
+  }
+}
+
+@keyframes m-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@keyframes m-scroll-hint {
+  0% { transform: translateY(0); opacity: 0.6; }
+  50% { transform: translateY(8px); opacity: 1; }
+  100% { transform: translateY(16px); opacity: 0; }
+}
+
+@keyframes m-rotate-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

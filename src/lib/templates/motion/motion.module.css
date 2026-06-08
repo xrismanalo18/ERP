@@ -1,0 +1,213 @@
+/* ===== Reveal primitive ===== */
+
+.reveal {
+  opacity: 0;
+  will-change: opacity, transform, filter, clip-path;
+}
+
+.reveal[data-motion-in="true"] {
+  animation-name: var(--m-anim, m-fade);
+  animation-duration: var(--m-dur, var(--m-dur-base, 720ms));
+  animation-timing-function: var(--m-ease, var(--m-ease-out, cubic-bezier(0.16, 1, 0.3, 1)));
+  animation-delay: calc(var(--m-delay, 0ms) + (var(--m-i, 0) * var(--m-stagger, 90ms)));
+  animation-fill-mode: forwards;
+}
+
+.fade { --m-anim: m-fade; }
+.fadeUp { --m-anim: m-fade-up; }
+.fadeDown { --m-anim: m-fade-down; }
+.fadeLeft { --m-anim: m-fade-left; }
+.fadeRight { --m-anim: m-fade-right; }
+.fadeScale { --m-anim: m-fade-scale; }
+.scaleIn { --m-anim: m-scale-in; }
+.slideUp { --m-anim: m-slide-up; }
+.slideDown { --m-anim: m-slide-down; }
+.slideLeft { --m-anim: m-slide-left; }
+.slideRight { --m-anim: m-slide-right; }
+.wipeRight { --m-anim: m-wipe-right; }
+.wipeUp { --m-anim: m-wipe-up; }
+.maskUp { --m-anim: m-mask-up; }
+.maskRight { --m-anim: m-mask-right; }
+.blurIn { --m-anim: m-blur-in; }
+.spotlight { --m-anim: m-spotlight; }
+.driftIn { --m-anim: m-drift-in; }
+.rollIn { --m-anim: m-roll-in; }
+.skewIn { --m-anim: m-skew-in; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal[data-motion-in="true"] {
+    opacity: 1;
+    animation: none;
+    transform: none;
+    filter: none;
+    clip-path: none;
+  }
+}
+
+/* ===== Ticker primitive ===== */
+
+.ticker {
+  display: flex;
+  overflow: hidden;
+  width: 100%;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 6%, #000 94%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 6%, #000 94%, transparent 100%);
+}
+
+.ticker[data-edges="hard"] {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.tickerTrack {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--m-ticker-gap, 32px);
+  animation: m-ticker-x var(--m-ticker-dur, 32s) linear infinite;
+  animation-direction: var(--m-ticker-dir, normal);
+  width: max-content;
+}
+
+.tickerGroup {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--m-ticker-gap, 32px);
+  align-items: center;
+}
+
+.ticker[data-pause="hover"]:hover .tickerTrack {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tickerTrack { animation: none; }
+}
+
+@keyframes m-ticker-x {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(calc(-50% - (var(--m-ticker-gap, 32px) / 2)));
+  }
+}
+
+/* ===== Rotator primitive ===== */
+
+.rotator {
+  position: relative;
+  width: 100%;
+}
+
+.rotatorStage {
+  position: relative;
+  overflow: hidden;
+}
+
+.rotatorSlide {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--m-dur-base, 720ms) var(--m-ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+    visibility 0s linear var(--m-dur-base, 720ms);
+}
+
+.rotatorSlide[data-active="true"] {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s, 0s;
+}
+
+.rotatorStageStacked {
+  display: grid;
+  grid-template-areas: "stack";
+}
+
+.rotatorStageStacked > .rotatorSlide {
+  grid-area: stack;
+  min-width: 0;
+}
+
+.rotatorControls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rotatorButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition: background var(--m-dur-fast, 220ms) var(--m-ease-out, cubic-bezier(0.2, 0.8, 0.2, 1)),
+    color var(--m-dur-fast, 220ms) var(--m-ease-out, cubic-bezier(0.2, 0.8, 0.2, 1)),
+    transform var(--m-dur-fast, 220ms) var(--m-ease-out, cubic-bezier(0.2, 0.8, 0.2, 1));
+}
+
+.rotatorButton:hover {
+  transform: translateY(-2px);
+}
+
+.rotatorButton:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.rotatorDots {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rotatorDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  border: none;
+  background: currentColor;
+  opacity: 0.35;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity var(--m-dur-fast, 220ms) ease,
+    width var(--m-dur-base, 440ms) var(--m-ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+.rotatorDot[data-active="true"] {
+  opacity: 1;
+  width: 28px;
+}
+
+/* ===== Counter primitive ===== */
+
+.counter {
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===== Magnetic + parallax ===== */
+
+.magnetic {
+  display: inline-block;
+  transition: transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: transform;
+}
+
+.parallax {
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .magnetic, .parallax {
+    transform: none !important;
+    transition: none !important;
+  }
+}
