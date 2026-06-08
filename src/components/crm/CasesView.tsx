@@ -48,7 +48,7 @@ export default function CasesView() {
   const p1Count = CASES.filter(c => c.priority === "P1").length;
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-6 space-y-4" style={{ overflowY: "auto", flex: 1 }}>
       {/* Stats row */}
       <div className="grid grid-cols-4 gap-4">
         {[

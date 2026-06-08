@@ -16,7 +16,7 @@ const INITIALS_COLORS = ["#0176D3", "#7C3AED", "#059669", "#D97706", "#DC2626", 
 
 export default function ContactsView() {
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-6 space-y-4" style={{ overflowY: "auto", flex: 1 }}>
       {/* Toolbar */}
       <div className="rounded-xl p-4 flex items-center gap-3" style={{ background: "#fff", border: "1px solid #E5E7EB", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
         <div className="relative flex-1 max-w-xs">

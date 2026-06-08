@@ -57,7 +57,6 @@ function MarkdownText({ text }: { text: string }) {
   );
 }
 
-/* ─── UPLOAD SCREEN ────────────────────────────────────────────── */
 function UploadScreen({ onFile }: { onFile: (f: File) => void }) {
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -69,29 +68,26 @@ function UploadScreen({ onFile }: { onFile: (f: File) => void }) {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-full w-full px-6" style={{ minHeight: 0 }}>
-      {/* Heading */}
-      <div className="mb-8 text-center">
-        <div className="flex items-center justify-center mx-auto mb-4 rounded-2xl" style={{ width: 72, height: 72, background: "#EFF6FF" }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, padding: "24px" }}>
+      <div style={{ marginBottom: 32, textAlign: "center" }}>
+        <div style={{ width: 72, height: 72, background: "#EFF6FF", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
           <Icon icon="lucide:file-search" width={36} height={36} style={{ color: "#0176D3" }} />
         </div>
-        <h2 className="text-2xl font-bold mb-2" style={{ color: "#111827" }}>Contract Analyzer</h2>
-        <p className="text-sm max-w-md" style={{ color: "#6B7280" }}>
+        <h2 style={{ fontSize: 24, fontWeight: 700, color: "#111827", margin: "0 0 8px" }}>Contract Analyzer</h2>
+        <p style={{ fontSize: 14, color: "#6B7280", maxWidth: 440, margin: "0 auto" }}>
           Upload a contract document and ask our AI any question — clause lookups, risk gaps, payment terms, renewal conditions, and more.
         </p>
       </div>
 
-      {/* Drop zone */}
       {loading ? (
-        <div className="flex flex-col items-center gap-4" style={{ width: 520 }}>
-          <div className="rounded-2xl flex items-center justify-center" style={{ width: 64, height: 64, background: "#EFF6FF" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+          <div style={{ width: 64, height: 64, background: "#EFF6FF", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <Icon icon="lucide:loader-circle" width={30} height={30} style={{ color: "#0176D3" }} className="animate-spin" />
           </div>
-          <p className="font-semibold text-sm" style={{ color: "#374151" }}>Analyzing contract…</p>
-          <div className="flex gap-2 flex-wrap justify-center">
+          <p style={{ fontSize: 14, fontWeight: 600, color: "#374151" }}>Analyzing contract…</p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
             {["Reading clauses", "Extracting terms", "Scanning for gaps", "Building index"].map((s, i) => (
-              <span key={i} className="text-xs px-3 py-1 rounded-full font-medium animate-pulse"
-                style={{ background: "#EFF6FF", color: "#0176D3", animationDelay: `${i * 0.25}s` }}>{s}</span>
+              <span key={i} className="animate-pulse" style={{ fontSize: 12, padding: "4px 12px", borderRadius: 20, background: "#EFF6FF", color: "#0176D3", fontWeight: 500, animationDelay: `${i * 0.25}s` }}>{s}</span>
             ))}
           </div>
         </div>
@@ -101,41 +97,39 @@ function UploadScreen({ onFile }: { onFile: (f: File) => void }) {
           onDragLeave={() => setDragging(false)}
           onDrop={e => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files[0]; if (f) pick(f); }}
           onClick={() => fileRef.current?.click()}
-          className="flex flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed cursor-pointer transition-all"
           style={{
-            width: 520,
-            height: 240,
-            borderColor: dragging ? "#0176D3" : "#D1D5DB",
+            width: 520, height: 240,
+            border: `2px dashed ${dragging ? "#0176D3" : "#D1D5DB"}`,
+            borderRadius: 16,
             background: dragging ? "#EFF6FF" : "#F9FAFB",
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16,
+            cursor: "pointer", transition: "all 150ms",
           }}
         >
-          <div className="rounded-2xl flex items-center justify-center transition-colors" style={{ width: 60, height: 60, background: dragging ? "#DBEAFE" : "#E5E7EB" }}>
+          <div style={{ width: 60, height: 60, background: dragging ? "#DBEAFE" : "#E5E7EB", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <Icon icon="lucide:upload-cloud" width={28} height={28} style={{ color: dragging ? "#0176D3" : "#9CA3AF" }} />
           </div>
-          <div className="text-center">
-            <p className="font-semibold text-base" style={{ color: "#374151" }}>
+          <div style={{ textAlign: "center" }}>
+            <p style={{ fontWeight: 600, fontSize: 15, color: "#374151", margin: "0 0 4px" }}>
               {dragging ? "Release to upload" : "Drag & drop your contract here"}
             </p>
-            <p className="text-sm mt-1" style={{ color: "#9CA3AF" }}>PDF, DOCX, or TXT · Up to 50 MB</p>
+            <p style={{ fontSize: 13, color: "#9CA3AF", margin: 0 }}>PDF, DOCX, or TXT · Up to 50 MB</p>
           </div>
           <button
-            className="px-5 py-2.5 rounded-xl font-semibold text-sm text-white transition-colors"
-            style={{ background: "#0176D3" }}
+            style={{ background: "#0176D3", color: "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontWeight: 600, fontSize: 14, cursor: "pointer" }}
             onClick={e => { e.stopPropagation(); fileRef.current?.click(); }}
           >
             Browse Files
           </button>
-          <input ref={fileRef} type="file" accept=".pdf,.docx,.txt,.doc" className="hidden"
+          <input ref={fileRef} type="file" accept=".pdf,.docx,.txt,.doc" style={{ display: "none" }}
             onChange={e => { const f = e.target.files?.[0]; if (f) pick(f); }} />
         </div>
       )}
 
-      {/* Capability pills */}
       {!loading && (
-        <div className="mt-8 flex flex-wrap justify-center gap-2 max-w-lg">
+        <div style={{ marginTop: 32, display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 8, maxWidth: 520 }}>
           {["Clause lookup", "Risk & gap analysis", "Payment terms", "SLA review", "Auto-renewal check", "Data privacy", "Termination conditions"].map(c => (
-            <span key={c} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-medium"
-              style={{ background: "#F3F4F6", color: "#374151" }}>
+            <span key={c} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, padding: "6px 12px", borderRadius: 20, background: "#F3F4F6", color: "#374151", fontWeight: 500 }}>
               <Icon icon="lucide:check" width={11} height={11} style={{ color: "#22C55E" }} />
               {c}
             </span>
@@ -146,7 +140,6 @@ function UploadScreen({ onFile }: { onFile: (f: File) => void }) {
   );
 }
 
-/* ─── CHAT SCREEN ──────────────────────────────────────────────── */
 function ChatScreen({ file, onClear }: { file: File; onClear: () => void }) {
   const [messages, setMessages] = useState<Message[]>([{
     role: "ai",
@@ -169,61 +162,59 @@ function ChatScreen({ file, onClear }: { file: File; onClear: () => void }) {
   };
 
   return (
-    <div className="flex h-full" style={{ minHeight: 0 }}>
+    <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
       {/* Left sidebar */}
-      <div className="shrink-0 flex flex-col gap-3 p-4 border-r overflow-y-auto" style={{ width: 260, borderColor: "#F3F4F6" }}>
+      <div style={{ width: 260, flexShrink: 0, display: "flex", flexDirection: "column", gap: 12, padding: 16, borderRight: "1px solid #F3F4F6", overflowY: "auto" }}>
         {/* File info */}
-        <div className="rounded-xl p-3" style={{ background: "#F0FDF4", border: "1px solid #BBF7D0" }}>
-          <div className="flex items-start gap-2">
-            <div className="rounded-lg flex items-center justify-center shrink-0" style={{ width: 32, height: 32, background: "#DCFCE7" }}>
+        <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 12, padding: 12 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+            <div style={{ width: 32, height: 32, background: "#DCFCE7", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <Icon icon="lucide:file-check-2" width={16} height={16} style={{ color: "#16A34A" }} />
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold truncate" style={{ color: "#111827" }}>{file.name}</p>
-              <p className="text-xs" style={{ color: "#16A34A" }}>Analyzed · Ready</p>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: "#111827", margin: "0 0 2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.name}</p>
+              <p style={{ fontSize: 11, color: "#16A34A", margin: 0 }}>Analyzed · Ready</p>
             </div>
-            <button onClick={onClear} className="p-1 rounded hover:bg-green-200 transition-colors shrink-0" style={{ color: "#16A34A" }}>
-              <Icon icon="lucide:x" width={12} height={12} />
+            <button onClick={onClear} style={{ background: "none", border: "none", cursor: "pointer", color: "#16A34A", padding: 2, flexShrink: 0 }}>
+              <Icon icon="lucide:x" width={13} height={13} />
             </button>
           </div>
         </div>
 
         {/* Contract info */}
-        <div className="rounded-xl p-3" style={{ background: "#fff", border: "1px solid #E5E7EB" }}>
-          <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: "#6B7280" }}>Document Info</p>
-          <div className="space-y-1.5">
-            {[
-              ["Customer", "Acme Healthcare"],
-              ["Type", "Enterprise SaaS"],
-              ["Value", "$280,000 USD"],
-              ["Start", "Jan 1, 2026"],
-              ["Expires", "Dec 31, 2027"],
-              ["Auto-Renewal", "Yes · 60d notice"],
-              ["Payment", "Net 30, Quarterly"],
-            ].map(([k, v]) => (
-              <div key={k} className="flex justify-between gap-1">
-                <span className="text-xs shrink-0" style={{ color: "#9CA3AF" }}>{k}</span>
-                <span className="text-xs font-semibold text-right" style={{ color: "#374151" }}>{v}</span>
-              </div>
-            ))}
-          </div>
+        <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 12 }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 8px" }}>Document Info</p>
+          {[
+            ["Customer", "Acme Healthcare"],
+            ["Type", "Enterprise SaaS"],
+            ["Value", "$280,000 USD"],
+            ["Start", "Jan 1, 2026"],
+            ["Expires", "Dec 31, 2027"],
+            ["Auto-Renewal", "Yes · 60d notice"],
+            ["Payment", "Net 30, Quarterly"],
+          ].map(([k, v]) => (
+            <div key={k} style={{ display: "flex", justifyContent: "space-between", gap: 4, marginBottom: 4 }}>
+              <span style={{ fontSize: 11, color: "#9CA3AF" }}>{k}</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: "#374151", textAlign: "right" }}>{v}</span>
+            </div>
+          ))}
         </div>
 
-        {/* Health scores */}
-        <div className="rounded-xl p-3" style={{ background: "#fff", border: "1px solid #E5E7EB" }}>
-          <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: "#6B7280" }}>Contract Health</p>
+        {/* Health */}
+        <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: 12 }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 8px" }}>Contract Health</p>
           {[
             { label: "Completeness", score: 78, color: "#F59E0B" },
             { label: "Compliance", score: 92, color: "#22C55E" },
             { label: "Risk Score", score: 34, color: "#22C55E" },
           ].map(({ label, score, color }) => (
-            <div key={label} className="mb-2">
-              <div className="flex justify-between mb-0.5">
-                <span className="text-xs" style={{ color: "#6B7280" }}>{label}</span>
-                <span className="text-xs font-bold" style={{ color }}>{score}%</span>
+            <div key={label} style={{ marginBottom: 8 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
+                <span style={{ fontSize: 11, color: "#6B7280" }}>{label}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color }}>{score}%</span>
               </div>
-              <div className="h-1.5 rounded-full" style={{ background: "#F3F4F6" }}>
-                <div className="h-full rounded-full" style={{ width: `${score}%`, background: color }} />
+              <div style={{ height: 6, borderRadius: 3, background: "#F3F4F6" }}>
+                <div style={{ height: "100%", borderRadius: 3, width: `${score}%`, background: color }} />
               </div>
             </div>
           ))}
@@ -231,68 +222,65 @@ function ChatScreen({ file, onClear }: { file: File; onClear: () => void }) {
 
         {/* Suggested questions */}
         <div>
-          <p className="text-xs font-bold uppercase tracking-wide mb-2 px-1" style={{ color: "#6B7280" }}>Quick Questions</p>
-          <div className="flex flex-col gap-1">
-            {SUGGESTED.map(q => (
-              <button key={q} onClick={() => send(q)}
-                className="text-left text-xs px-3 py-2 rounded-lg border transition-colors hover:border-blue-300 hover:bg-blue-50"
-                style={{ background: "#F9FAFB", borderColor: "#E5E7EB", color: "#374151" }}>
-                {q}
-              </button>
-            ))}
-          </div>
+          <p style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 8px 4px" }}>Quick Questions</p>
+          {SUGGESTED.map(q => (
+            <button key={q} onClick={() => send(q)}
+              style={{ display: "block", width: "100%", textAlign: "left", fontSize: 12, padding: "8px 12px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#F9FAFB", color: "#374151", cursor: "pointer", marginBottom: 4 }}>
+              {q}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Chat area */}
-      <div className="flex-1 flex flex-col" style={{ minWidth: 0 }}>
-        {/* Chat header */}
-        <div className="flex items-center gap-3 px-5 py-3 border-b shrink-0" style={{ borderColor: "#F3F4F6" }}>
-          <div className="rounded-lg flex items-center justify-center shrink-0" style={{ width: 32, height: 32, background: "#EFF6FF" }}>
+      {/* Chat */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 20px", borderBottom: "1px solid #F3F4F6", flexShrink: 0 }}>
+          <div style={{ width: 32, height: 32, background: "#EFF6FF", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <Icon icon="lucide:brain-circuit" width={16} height={16} style={{ color: "#0176D3" }} />
           </div>
           <div>
-            <p className="text-sm font-semibold" style={{ color: "#111827" }}>Contract AI</p>
-            <p className="text-xs" style={{ color: "#9CA3AF" }}>Ask anything about this contract</p>
+            <p style={{ fontSize: 14, fontWeight: 600, color: "#111827", margin: 0 }}>Contract AI</p>
+            <p style={{ fontSize: 12, color: "#9CA3AF", margin: 0 }}>Ask anything about this contract</p>
           </div>
-          <span className="ml-auto text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: "#DCFCE7", color: "#16A34A" }}>
-            ● Active
-          </span>
+          <span style={{ marginLeft: "auto", fontSize: 11, padding: "2px 8px", borderRadius: 20, background: "#DCFCE7", color: "#16A34A", fontWeight: 600 }}>● Active</span>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+        <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
           {messages.map((m, i) => (
-            <div key={i} className={`flex gap-3 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div key={i} style={{ display: "flex", gap: 10, justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
               {m.role === "ai" && (
-                <div className="rounded-full flex items-center justify-center shrink-0 mt-0.5" style={{ width: 28, height: 28, background: "#EFF6FF" }}>
+                <div style={{ width: 28, height: 28, background: "#EFF6FF", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
                   <Icon icon="lucide:brain-circuit" width={13} height={13} style={{ color: "#0176D3" }} />
                 </div>
               )}
-              <div className="rounded-2xl px-4 py-3 text-sm leading-relaxed"
-                style={{
-                  maxWidth: "72%",
-                  background: m.role === "user" ? "#0176D3" : "#F9FAFB",
-                  color: m.role === "user" ? "#fff" : "#374151",
-                  border: m.role === "ai" ? "1px solid #E5E7EB" : "none",
-                  borderRadius: m.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
-                }}>
+              <div style={{
+                maxWidth: "72%",
+                background: m.role === "user" ? "#0176D3" : "#F9FAFB",
+                color: m.role === "user" ? "#fff" : "#374151",
+                border: m.role === "ai" ? "1px solid #E5E7EB" : "none",
+                borderRadius: m.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
+                padding: "12px 16px",
+                fontSize: 14,
+                lineHeight: 1.6,
+              }}>
                 <MarkdownText text={m.text} />
               </div>
               {m.role === "user" && (
-                <div className="rounded-full flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold text-white" style={{ width: 28, height: 28, background: "#0176D3" }}>JD</div>
+                <div style={{ width: 28, height: 28, background: "#0176D3", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2, fontSize: 11, fontWeight: 700, color: "#fff" }}>JD</div>
               )}
             </div>
           ))}
 
           {thinking && (
-            <div className="flex gap-3 justify-start">
-              <div className="rounded-full flex items-center justify-center shrink-0" style={{ width: 28, height: 28, background: "#EFF6FF" }}>
+            <div style={{ display: "flex", gap: 10 }}>
+              <div style={{ width: 28, height: 28, background: "#EFF6FF", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 <Icon icon="lucide:brain-circuit" width={13} height={13} style={{ color: "#0176D3" }} />
               </div>
-              <div className="rounded-2xl px-4 py-3 flex gap-1.5 items-center" style={{ background: "#F9FAFB", border: "1px solid #E5E7EB", borderRadius: "18px 18px 18px 4px" }}>
+              <div style={{ background: "#F9FAFB", border: "1px solid #E5E7EB", borderRadius: "18px 18px 18px 4px", padding: "12px 16px", display: "flex", gap: 6, alignItems: "center" }}>
                 {[0, 1, 2].map(i => (
-                  <div key={i} className="rounded-full" style={{ width: 7, height: 7, background: "#D1D5DB", animation: `aiDotBounce 1.2s ${i * 0.2}s infinite` }} />
+                  <div key={i} style={{ width: 7, height: 7, background: "#D1D5DB", borderRadius: "50%", animation: `aiDot 1.2s ${i * 0.2}s infinite` }} />
                 ))}
               </div>
             </div>
@@ -301,9 +289,8 @@ function ChatScreen({ file, onClear }: { file: File; onClear: () => void }) {
         </div>
 
         {/* Input */}
-        <div className="px-5 py-4 border-t shrink-0" style={{ borderColor: "#F3F4F6" }}>
-          <div className="flex items-end gap-3 rounded-xl border px-4 py-3 focus-within:border-blue-400 transition-colors"
-            style={{ borderColor: "#E5E7EB", background: "#F9FAFB" }}>
+        <div style={{ padding: "12px 20px 16px", borderTop: "1px solid #F3F4F6", flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 10, background: "#F9FAFB", border: "1px solid #E5E7EB", borderRadius: 12, padding: "10px 14px" }}>
             <textarea
               value={input}
               onChange={e => setInput(e.target.value)}
@@ -311,50 +298,48 @@ function ChatScreen({ file, onClear }: { file: File; onClear: () => void }) {
               placeholder="Ask a question about this contract…"
               disabled={thinking}
               rows={1}
-              className="flex-1 resize-none text-sm outline-none bg-transparent"
-              style={{ color: "#111827", maxHeight: 100, minHeight: 22, lineHeight: 1.6 }}
+              style={{ flex: 1, resize: "none", background: "transparent", border: "none", outline: "none", fontSize: 14, color: "#111827", lineHeight: 1.6, maxHeight: 100, minHeight: 22 }}
             />
             <button
               onClick={() => send(input)}
               disabled={!input.trim() || thinking}
-              className="flex items-center justify-center rounded-xl shrink-0 transition-colors"
               style={{
-                width: 36, height: 36,
+                width: 36, height: 36, flexShrink: 0,
                 background: input.trim() && !thinking ? "#0176D3" : "#E5E7EB",
                 color: input.trim() && !thinking ? "#fff" : "#9CA3AF",
+                border: "none", borderRadius: 10, cursor: input.trim() && !thinking ? "pointer" : "default",
+                display: "flex", alignItems: "center", justifyContent: "center",
               }}
             >
               <Icon icon="lucide:send" width={15} height={15} />
             </button>
           </div>
-          <p className="text-xs mt-2 text-center" style={{ color: "#D1D5DB" }}>
-            AI responses are based on the uploaded contract. Press Enter to send, Shift+Enter for new line.
+          <p style={{ fontSize: 11, color: "#D1D5DB", textAlign: "center", margin: "8px 0 0" }}>
+            AI responses are based on the uploaded contract. Press Enter to send.
           </p>
         </div>
       </div>
-    </div>
-  );
-}
 
-/* ─── ROOT COMPONENT ────────────────────────────────────────────── */
-export default function ContractAnalyzerView() {
-  const [file, setFile] = useState<File | null>(null);
-
-  return (
-    <div className="flex h-full" style={{ overflow: "hidden" }}>
-      {!file ? (
-        <UploadScreen onFile={setFile} />
-      ) : (
-        <div className="flex-1 flex flex-col overflow-hidden" style={{ background: "#fff" }}>
-          <ChatScreen file={file} onClear={() => setFile(null)} />
-        </div>
-      )}
       <style>{`
-        @keyframes aiDotBounce {
+        @keyframes aiDot {
           0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
           40% { transform: translateY(-5px); opacity: 1; }
         }
       `}</style>
+    </div>
+  );
+}
+
+export default function ContractAnalyzerView() {
+  const [file, setFile] = useState<File | null>(null);
+
+  return (
+    <div style={{ display: "flex", flex: 1, overflow: "hidden", background: "#fff" }}>
+      {!file ? (
+        <UploadScreen onFile={setFile} />
+      ) : (
+        <ChatScreen file={file} onClear={() => setFile(null)} />
+      )}
     </div>
   );
 }

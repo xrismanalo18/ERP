@@ -91,7 +91,7 @@ export default function AIReviewView() {
   const d = REVIEW_DATA;
 
   return (
-    <div className="p-6 flex gap-5" style={{ height: "100%", overflow: "auto" }}>
+    <div className="p-6 flex gap-5" style={{ flex: 1, overflow: "auto" }}>
       {/* Left: Config panel */}
       <div className="shrink-0 flex flex-col gap-4" style={{ width: 280 }}>
         {/* Account selector */}

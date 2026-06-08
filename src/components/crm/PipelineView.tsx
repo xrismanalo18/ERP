@@ -40,7 +40,7 @@ const REPS = ["All Reps", "J. Dela Cruz", "S. Reyes", "M. Garcia", "A. Santos"];
 
 export default function PipelineView() {
   return (
-    <div className="p-6 flex flex-col gap-4" style={{ height: "100%" }}>
+    <div className="p-6 flex flex-col gap-4" style={{ flex: 1, overflow: "hidden" }}>
       {/* Toolbar */}
       <div className="flex items-center gap-3">
         <h2 className="font-bold text-base" style={{ color: "#111827" }}>Q2 2026 Pipeline</h2>

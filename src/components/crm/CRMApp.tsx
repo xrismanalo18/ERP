@@ -34,7 +34,7 @@ export default function CRMApp() {
       <Sidebar active={view} onNav={setView} collapsed={collapsed} onToggle={() => setCollapsed(p => !p)} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <TopBar view={view} />
-        <main style={{ flex: 1, overflowY: "auto" }}>
+        <main style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
           {renderView()}
         </main>
       </div>
