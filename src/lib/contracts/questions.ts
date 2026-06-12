@@ -1,0 +1,33 @@
+export const CONTRACT_QUESTIONS = [
+  "Summarize this contract.",
+  "What is the contract value?",
+  "When does it expire?",
+  "Is there an auto-renewal clause?",
+  "What are the payment terms?",
+  "Identify contract gaps.",
+  "What are the SLA commitments?",
+  "What are the termination conditions?",
+  "Who are the contracting parties and what are their obligations?",
+  "What products, services, and deliverables are included?",
+  "Are there limitations or exclusions in the scope?",
+  "What data privacy and security obligations apply?",
+  "What are the liability limitations and liability caps?",
+  "Does the contract contain indemnification obligations?",
+  "What confidentiality requirements and exceptions apply?",
+  "What law governs the contract, and how are disputes resolved?",
+  "Are there unusual, ambiguous, or one-sided clauses?",
+  "What deadlines, notice periods, and required actions should we track?",
+] as const;
+
+export const GAP_ANALYSIS_BASELINE = [
+  "Parties and effective date",
+  "Scope and deliverables",
+  "Pricing and payment",
+  "Term and renewal",
+  "Termination",
+  "Service-level agreement",
+  "Data privacy and security",
+  "Liability and indemnification",
+  "Confidentiality",
+  "Governing law",
+] as const;

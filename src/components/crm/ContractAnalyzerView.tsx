@@ -1,220 +1,647 @@
 "use client";
+
 import { Icon } from "@iconify/react";
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
-type Msg = { role: "user" | "ai"; text: string };
+import { extractContract } from "@/lib/contracts/extract-contract";
+import { CONTRACT_QUESTIONS, GAP_ANALYSIS_BASELINE } from "@/lib/contracts/questions";
+import type {
+  ContractAnalysis,
+  ContractCitation,
+  ContractFinding,
+  ExtractedContract,
+  RiskLevel,
+} from "@/lib/contracts/types";
 
-const QA: Record<string, string> = {
-  "contract value": "The total contract value is **$280,000 USD** for a 24-month term, with a scheduled annual increase of 5% beginning in Year 2 (effective January 1, 2027).",
-  "expire": "The contract effective date is **January 1, 2026** and it expires **December 31, 2027** unless renewed or terminated pursuant to Section 12.1.",
-  "payment": "Per Section 5.2, payment is due **Net 30** from invoice date. Late payments accrue 1.5% interest per month. Invoices are issued quarterly in advance.",
-  "renewal": "Yes — Section 12.3 includes an **automatic renewal clause**. The contract auto-renews for successive 12-month terms unless either party provides written notice at least **60 days prior** to the expiration date.",
-  "termination": "Section 12.1 allows termination for cause with **30 days written notice**. Section 12.2 allows termination for convenience with **90 days written notice**, subject to an early termination fee of 20% of remaining contract value.",
-  "sla": "Section 8: **99.5% uptime** guarantee per calendar month, **4-hour response** for P1 incidents, **8-hour resolution** for P2. SLA breach credits are 5% of monthly fees per incident.",
-  "privacy": "Section 10 references **GDPR**, **CCPA**, and the **Data Privacy Act of 2012 (Philippines)**. The vendor must notify the customer within **72 hours** of any confirmed data breach.",
-  "gap": "I identified **3 potential contract gaps**:\n1. **Budget owner** is not named — no procurement or finance approver identified.\n2. **Renewal blocker clause** is missing — no provision for disputes at renewal time.\n3. **Scope of use** is vague in Section 3.1 — licensed user count is not capped.",
-  "summar": "**Contract Summary — Acme Healthcare Solutions**\nThis is a 24-month Enterprise SaaS Agreement valued at **$280,000 USD**, effective Jan 1, 2026 through Dec 31, 2027.\n- Payment: Quarterly, Net 30\n- Auto-renewal: Yes, 60-day cancellation notice required\n- SLA: 99.5% uptime, P1 4-hour response time\n- Early termination fee: 20% of remaining contract value",
+type Message =
+  | { role: "user"; text: string }
+  | { role: "ai"; analysis: ContractAnalysis };
+
+const riskStyle: Record<RiskLevel, { bg: string; color: string }> = {
+  low: { bg: "#DCFCE7", color: "#166534" },
+  medium: { bg: "#FEF3C7", color: "#92400E" },
+  high: { bg: "#FEE2E2", color: "#991B1B" },
 };
 
-function aiAnswer(q: string) {
-  const l = q.toLowerCase();
-  for (const [k, v] of Object.entries(QA)) { if (l.includes(k)) return v; }
-  return `I could not find a specific clause for **"${q}"** in this contract. This may be a gap worth flagging. Recommend reviewing Section 3 (Scope) and Section 12 (Term & Termination) or consulting your legal team.`;
+async function requestAnalysis(
+  contract: ExtractedContract,
+  mode: "initial_analysis" | "question",
+  question?: string,
+) {
+  const response = await fetch("/api/contracts/analyze", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      mode,
+      question,
+      filename: contract.filename,
+      contractText: contract.text,
+    }),
+  });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.error || "Contract analysis failed.");
+  return body as ContractAnalysis;
 }
 
-function Txt({ s }: { s: string }) {
+function RiskBadge({ risk }: { risk: RiskLevel }) {
+  const style = riskStyle[risk];
   return (
-    <>{s.split("\n").map((line, li) => (
-      <span key={li}>{li > 0 && <br />}
-        {line.split(/(\*\*[^*]+\*\*)/).map((p, i) =>
-          p.startsWith("**") ? <strong key={i}>{p.slice(2, -2)}</strong> : <span key={i}>{p}</span>
-        )}
-      </span>
-    ))}</>
+    <span
+      style={{
+        background: style.bg,
+        color: style.color,
+        borderRadius: 999,
+        padding: "3px 8px",
+        fontSize: 10,
+        fontWeight: 700,
+        textTransform: "uppercase",
+      }}
+    >
+      {risk}
+    </span>
   );
 }
 
-const QUICK = ["Summarize this contract","What is the contract value?","When does it expire?","Is there an auto-renewal clause?","What are the payment terms?","Identify contract gaps","What are the SLA commitments?","Termination conditions?"];
+function CitationList({ citations }: { citations: ContractCitation[] }) {
+  if (!citations.length) return null;
+  return (
+    <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+      <p style={{ margin: 0, color: "#6B7280", fontSize: 11, fontWeight: 700 }}>
+        Evidence
+      </p>
+      {citations.map((citation, index) => (
+        <div
+          key={`${citation.quote}-${index}`}
+          style={{
+            borderLeft: "3px solid #93C5FD",
+            background: "#EFF6FF",
+            borderRadius: "0 7px 7px 0",
+            padding: "7px 9px",
+          }}
+        >
+          <p style={{ margin: "0 0 2px", color: "#1D4ED8", fontSize: 10, fontWeight: 700 }}>
+            {citation.section || "Unnumbered section"}
+            {citation.page ? ` · Page ${citation.page}` : ""}
+          </p>
+          <p style={{ margin: 0, color: "#374151", fontSize: 11, lineHeight: 1.45 }}>
+            “{citation.quote}”
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FindingList({
+  title,
+  findings,
+}: {
+  title: string;
+  findings: ContractFinding[];
+}) {
+  if (!findings.length) return null;
+  return (
+    <section style={{ marginTop: 14 }}>
+      <p style={{ margin: "0 0 7px", color: "#374151", fontSize: 12, fontWeight: 700 }}>
+        {title}
+      </p>
+      <div style={{ display: "grid", gap: 7 }}>
+        {findings.map((finding, index) => (
+          <details
+            key={`${finding.title}-${index}`}
+            style={{
+              background: "#fff",
+              border: "1px solid #E5E7EB",
+              borderRadius: 8,
+              padding: "8px 10px",
+            }}
+          >
+            <summary style={{ cursor: "pointer", color: "#111827", fontSize: 12, fontWeight: 600 }}>
+              <span style={{ marginRight: 7 }}>{finding.title}</span>
+              <RiskBadge risk={finding.risk} />
+            </summary>
+            <p style={{ color: "#4B5563", fontSize: 12, lineHeight: 1.55 }}>{finding.summary}</p>
+            <p style={{ color: "#374151", fontSize: 11, lineHeight: 1.5 }}>
+              <strong>Recommendation:</strong> {finding.recommendation}
+            </p>
+            <CitationList citations={finding.citations} />
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function AnalysisMessage({ analysis }: { analysis: ContractAnalysis }) {
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}>
+        <RiskBadge risk={analysis.overallRisk} />
+        <span style={{ color: "#6B7280", fontSize: 11 }}>{analysis.contractType}</span>
+      </div>
+      <p style={{ margin: 0, whiteSpace: "pre-wrap", color: "#1F2937", fontSize: 13, lineHeight: 1.6 }}>
+        {analysis.simpleAnswer}
+      </p>
+      <details style={{ marginTop: 10 }}>
+        <summary style={{ cursor: "pointer", color: "#0176D3", fontSize: 11, fontWeight: 700 }}>
+          Technical analysis
+        </summary>
+        <p style={{ whiteSpace: "pre-wrap", color: "#4B5563", fontSize: 12, lineHeight: 1.6 }}>
+          {analysis.technicalAnalysis}
+        </p>
+      </details>
+      {analysis.warning && (
+        <div
+          style={{
+            marginTop: 10,
+            border: "1px solid #FDE68A",
+            background: "#FFFBEB",
+            borderRadius: 8,
+            padding: 8,
+            color: "#92400E",
+            fontSize: 11,
+          }}
+        >
+          {analysis.warning}
+        </div>
+      )}
+      <FindingList title="Material findings" findings={analysis.findings} />
+      <FindingList title="Potential gaps" findings={analysis.gaps} />
+      {!!analysis.deadlines.length && (
+        <section style={{ marginTop: 14 }}>
+          <p style={{ margin: "0 0 7px", color: "#374151", fontSize: 12, fontWeight: 700 }}>
+            Deadlines and actions
+          </p>
+          {analysis.deadlines.map((deadline, index) => (
+            <div
+              key={`${deadline.label}-${index}`}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr auto",
+                gap: 6,
+                borderTop: "1px solid #E5E7EB",
+                padding: "7px 0",
+                fontSize: 11,
+              }}
+            >
+              <div>
+                <strong style={{ color: "#111827" }}>{deadline.label}</strong>
+                <p style={{ margin: "2px 0 0", color: "#6B7280" }}>{deadline.action}</p>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <RiskBadge risk={deadline.risk} />
+                <p style={{ margin: "3px 0 0", color: "#374151" }}>{deadline.dateOrPeriod}</p>
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
+      <CitationList citations={analysis.citations} />
+    </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 5 }}>
+      <span style={{ color: "#9CA3AF", fontSize: 11 }}>{label}</span>
+      <span
+        title={value || "Not found"}
+        style={{
+          color: value ? "#374151" : "#9CA3AF",
+          fontSize: 11,
+          fontWeight: 600,
+          textAlign: "right",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          maxWidth: 135,
+        }}
+      >
+        {value || "Not found"}
+      </span>
+    </div>
+  );
+}
 
 export default function ContractAnalyzerView() {
-  const [file, setFile] = useState<File | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [drag, setDrag] = useState(false);
-  const [msgs, setMsgs] = useState<Msg[]>([]);
-  const [inp, setInp] = useState("");
+  const [contract, setContract] = useState<ExtractedContract | null>(null);
+  const [initial, setInitial] = useState<ContractAnalysis | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [stage, setStage] = useState<"idle" | "extracting" | "analyzing" | "ready">("idle");
+  const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
-  const fRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState<string | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const height = "calc(100vh - 48px)";
 
-  const pick = (f: File) => {
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false); setFile(f);
-      setMsgs([{ role: "ai", text: `Contract ready: **${f.name}**\n\nI've analyzed the document. Ask me about terms, risks, payment, renewals, SLA, or gaps.` }]);
-    }, 1500);
-  };
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, busy]);
 
-  const send = (t: string) => {
-    if (!t.trim() || busy) return;
-    const next: Msg[] = [...msgs, { role: "user", text: t }];
-    setMsgs(next); setInp(""); setBusy(true);
-    setTimeout(() => {
-      setMsgs([...next, { role: "ai", text: aiAnswer(t) }]);
+  async function pick(file: File) {
+    setError(null);
+    setStage("extracting");
+    setContract(null);
+    setInitial(null);
+    setMessages([]);
+    try {
+      const extracted = await extractContract(file);
+      setContract(extracted);
+      setStage("analyzing");
+      const analysis = await requestAnalysis(extracted, "initial_analysis");
+      setInitial(analysis);
+      setMessages([{ role: "ai", analysis }]);
+      setStage("ready");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to process the contract.");
+      setStage("idle");
+    }
+  }
+
+  async function send(question: string) {
+    const trimmed = question.trim();
+    if (!contract || !trimmed || busy) return;
+    setMessages((current) => [...current, { role: "user", text: trimmed }]);
+    setInput("");
+    setBusy(true);
+    setError(null);
+    try {
+      const analysis = await requestAnalysis(contract, "question", trimmed);
+      setMessages((current) => [...current, { role: "ai", analysis }]);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to answer the question.");
+    } finally {
       setBusy(false);
-      setTimeout(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), 60);
-    }, 900 + Math.random() * 600);
-  };
+    }
+  }
 
-  const H = "calc(100vh - 48px)";
+  function reset() {
+    setContract(null);
+    setInitial(null);
+    setMessages([]);
+    setError(null);
+    setStage("idle");
+    if (fileInput.current) fileInput.current.value = "";
+  }
 
-  if (!file && !loading) return (
-    <div style={{ height: H, overflowY:"auto", background:"#fff", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:40 }}>
-      <div style={{ width:68, height:68, background:"#EFF6FF", borderRadius:16, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:18 }}>
-        <Icon icon="lucide:file-search" width={34} height={34} style={{ color:"#0176D3" }}/>
-      </div>
-      <h2 style={{ fontSize:22, fontWeight:700, color:"#111827", margin:"0 0 8px" }}>Contract Analyzer</h2>
-      <p style={{ fontSize:14, color:"#6B7280", maxWidth:420, textAlign:"center", margin:"0 0 28px" }}>
-        Upload a contract document and ask our AI anything — clause lookups, risk gaps, payment terms, renewal conditions, and more.
-      </p>
+  if (stage === "idle") {
+    return (
       <div
-        onDragOver={e=>{e.preventDefault();setDrag(true)}}
-        onDragLeave={()=>setDrag(false)}
-        onDrop={e=>{e.preventDefault();setDrag(false);const f=e.dataTransfer.files[0];if(f)pick(f);}}
-        onClick={()=>fRef.current?.click()}
-        style={{ width:"100%", maxWidth:460, height:200, border:`2px dashed ${drag?"#0176D3":"#D1D5DB"}`, borderRadius:16, background:drag?"#EFF6FF":"#F9FAFB", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:14, cursor:"pointer" }}
+        style={{
+          height,
+          overflowY: "auto",
+          background: "#fff",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 40,
+        }}
       >
-        <div style={{ width:52, height:52, background:drag?"#DBEAFE":"#E5E7EB", borderRadius:12, display:"flex", alignItems:"center", justifyContent:"center" }}>
-          <Icon icon="lucide:upload-cloud" width={26} height={26} style={{ color:drag?"#0176D3":"#9CA3AF" }}/>
+        <div
+          style={{
+            width: 68,
+            height: 68,
+            background: "#EFF6FF",
+            borderRadius: 16,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            marginBottom: 18,
+          }}
+        >
+          <Icon icon="lucide:file-search" width={34} height={34} style={{ color: "#0176D3" }} />
         </div>
-        <div style={{ textAlign:"center" }}>
-          <p style={{ fontSize:15, fontWeight:600, color:"#374151", margin:"0 0 4px" }}>{drag?"Release to upload":"Drag & drop your contract here"}</p>
-          <p style={{ fontSize:13, color:"#9CA3AF", margin:0 }}>PDF, DOCX, or TXT · Up to 50 MB</p>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: "#111827", margin: "0 0 8px" }}>
+          Contract Analyzer
+        </h2>
+        <p
+          style={{
+            fontSize: 14,
+            color: "#6B7280",
+            maxWidth: 420,
+            textAlign: "center",
+            margin: "0 0 22px",
+          }}
+        >
+          Upload a text-based SaaS agreement. GPT-4.1 mini will summarize it, flag risks and
+          gaps, track deadlines, and answer questions using contract evidence only.
+        </p>
+        <div
+          onDragOver={(event) => {
+            event.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(event) => {
+            event.preventDefault();
+            setDragging(false);
+            const file = event.dataTransfer.files[0];
+            if (file) void pick(file);
+          }}
+          onClick={() => fileInput.current?.click()}
+          style={{
+            width: "100%",
+          maxWidth: 460,
+          minHeight: 200,
+            border: `2px dashed ${dragging ? "#0176D3" : "#D1D5DB"}`,
+            borderRadius: 16,
+            background: dragging ? "#EFF6FF" : "#F9FAFB",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 13,
+            cursor: "pointer",
+            padding: 22,
+          }}
+        >
+          <Icon icon="lucide:upload-cloud" width={34} height={34} style={{ color: "#0176D3" }} />
+          <div style={{ textAlign: "center" }}>
+            <p style={{ margin: "0 0 4px", color: "#374151", fontSize: 15, fontWeight: 600 }}>
+              {dragging ? "Release to analyze" : "Drag and drop a contract here"}
+            </p>
+            <p style={{ margin: 0, color: "#9CA3AF", fontSize: 12 }}>
+              PDF or DOCX · Up to 20 MB
+            </p>
+          </div>
+          <button
+            onClick={(event) => {
+              event.stopPropagation();
+              fileInput.current?.click();
+            }}
+            style={{
+              border: 0,
+              borderRadius: 9,
+              background: "#0176D3",
+              color: "#fff",
+              padding: "9px 20px",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            Browse files
+          </button>
+          <input
+            ref={fileInput}
+            type="file"
+            accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            style={{ display: "none" }}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void pick(file);
+            }}
+          />
         </div>
-        <button onClick={e=>{e.stopPropagation();fRef.current?.click();}} style={{ background:"#0176D3", color:"#fff", border:"none", borderRadius:10, padding:"9px 22px", fontWeight:600, fontSize:14, cursor:"pointer" }}>
-          Browse Files
-        </button>
-        <input ref={fRef} type="file" accept=".pdf,.docx,.txt,.doc" style={{ display:"none" }} onChange={e=>{const f=e.target.files?.[0];if(f)pick(f);}}/>
+        <a
+          href="/samples/demo-saas-agreement.docx"
+          download
+          style={{ marginTop: 14, color: "#0176D3", fontSize: 12, fontWeight: 600 }}
+        >
+          Download synthetic SaaS agreement for testing
+        </a>
+        {error && (
+          <p
+            style={{
+              maxWidth: 500,
+              margin: "14px 0 0",
+              padding: "9px 12px",
+              borderRadius: 8,
+              background: "#FEF2F2",
+              color: "#B91C1C",
+              fontSize: 12,
+            }}
+          >
+            {error}
+          </p>
+        )}
+        <p style={{ margin: "16px 0 0", maxWidth: 540, color: "#9CA3AF", fontSize: 11, textAlign: "center" }}>
+          Demo limitation: scanned PDFs are not supported. Files are analyzed in memory and are
+          not saved by this application.
+        </p>
       </div>
-      <div style={{ marginTop:24, display:"flex", flexWrap:"wrap", justifyContent:"center", gap:8, maxWidth:460 }}>
-        {["Clause lookup","Risk & gap analysis","Payment terms","SLA review","Auto-renewal check","Termination conditions"].map(c=>(
-          <span key={c} style={{ fontSize:12, padding:"5px 12px", borderRadius:20, background:"#F3F4F6", color:"#374151", display:"inline-flex", alignItems:"center", gap:5 }}>
-            <Icon icon="lucide:check" width={11} height={11} style={{ color:"#22C55E" }}/>{c}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
+    );
+  }
 
-  if (loading) return (
-    <div style={{ height:H, background:"#fff", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:16 }}>
-      <div style={{ width:60, height:60, background:"#EFF6FF", borderRadius:14, display:"flex", alignItems:"center", justifyContent:"center" }}>
-        <Icon icon="lucide:loader-circle" width={30} height={30} style={{ color:"#0176D3" }} className="animate-spin"/>
+  if (stage === "extracting" || stage === "analyzing") {
+    return (
+      <div
+        style={{
+          height,
+          background: "#fff",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 15,
+        }}
+      >
+        <Icon icon="lucide:loader-circle" width={38} height={38} className="animate-spin" style={{ color: "#0176D3" }} />
+        <p style={{ margin: 0, color: "#374151", fontSize: 15, fontWeight: 600 }}>
+          {stage === "extracting" ? "Extracting contract text..." : "Running initial contract review..."}
+        </p>
+        <p style={{ margin: 0, color: "#9CA3AF", fontSize: 12 }}>
+          {stage === "extracting"
+            ? "Preserving PDF page markers and DOCX content"
+            : "Checking the SaaS clause baseline, risks, gaps, and deadlines"}
+        </p>
       </div>
-      <p style={{ fontSize:15, fontWeight:600, color:"#374151" }}>Analyzing contract…</p>
-      <div style={{ display:"flex", gap:8, flexWrap:"wrap", justifyContent:"center" }}>
-        {["Reading clauses","Extracting terms","Scanning for gaps","Building index"].map((s,i)=>(
-          <span key={i} className="animate-pulse" style={{ fontSize:12, padding:"4px 12px", borderRadius:20, background:"#EFF6FF", color:"#0176D3", fontWeight:500 }}>{s}</span>
-        ))}
-      </div>
-    </div>
-  );
+    );
+  }
 
   return (
-    <div style={{ height:H, display:"flex", background:"#fff", overflow:"hidden" }}>
-      {/* Sidebar */}
-      <div style={{ width:252, flexShrink:0, borderRight:"1px solid #F3F4F6", overflowY:"auto", padding:14, display:"flex", flexDirection:"column", gap:10 }}>
-        <div style={{ background:"#F0FDF4", border:"1px solid #BBF7D0", borderRadius:11, padding:11 }}>
-          <div style={{ display:"flex", alignItems:"flex-start", gap:8 }}>
-            <div style={{ width:30, height:30, background:"#DCFCE7", borderRadius:7, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-              <Icon icon="lucide:file-check-2" width={15} height={15} style={{ color:"#16A34A" }}/>
+    <div style={{ height, display: "flex", background: "#fff", overflow: "hidden" }}>
+      <aside
+        style={{
+          width: 252,
+          flexShrink: 0,
+          borderRight: "1px solid #E5E7EB",
+          overflowY: "auto",
+          padding: 14,
+        }}
+      >
+        <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 10, padding: 10 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <Icon icon="lucide:file-check-2" width={17} height={17} style={{ color: "#16A34A" }} />
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <p
+                style={{
+                  margin: 0,
+                  color: "#111827",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {contract?.filename}
+              </p>
+              <p style={{ margin: "2px 0 0", color: "#16A34A", fontSize: 10 }}>
+                {contract?.pageCount ? `${contract.pageCount} pages` : "DOCX"} ·{" "}
+                {contract?.characterCount.toLocaleString()} characters
+              </p>
             </div>
-            <div style={{ flex:1, minWidth:0 }}>
-              <p style={{ fontSize:12, fontWeight:600, color:"#111827", margin:"0 0 1px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{file?.name}</p>
-              <p style={{ fontSize:11, color:"#16A34A", margin:0 }}>Analyzed · Ready</p>
-            </div>
-            <button onClick={()=>{setFile(null);setMsgs([]);}} style={{ background:"none", border:"none", cursor:"pointer", color:"#16A34A", padding:2, lineHeight:1 }}>
-              <Icon icon="lucide:x" width={13} height={13}/>
+            <button onClick={reset} aria-label="Remove contract" style={{ border: 0, background: "transparent", cursor: "pointer" }}>
+              <Icon icon="lucide:x" width={14} height={14} style={{ color: "#16A34A" }} />
             </button>
           </div>
         </div>
-        <div style={{ background:"#fff", border:"1px solid #E5E7EB", borderRadius:11, padding:11 }}>
-          <p style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:"0.07em", margin:"0 0 7px" }}>Document Info</p>
-          {[["Customer","Acme Healthcare"],["Type","Enterprise SaaS"],["Value","$280,000 USD"],["Start","Jan 1, 2026"],["Expires","Dec 31, 2027"],["Payment","Net 30, Quarterly"]].map(([k,v])=>(
-            <div key={k} style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
-              <span style={{ fontSize:11, color:"#9CA3AF" }}>{k}</span>
-              <span style={{ fontSize:11, fontWeight:600, color:"#374151" }}>{v}</span>
-            </div>
-          ))}
+
+        <div style={{ marginTop: 10, border: "1px solid #E5E7EB", borderRadius: 10, padding: 10 }}>
+          <p style={{ margin: "0 0 8px", color: "#9CA3AF", fontSize: 10, fontWeight: 700, textTransform: "uppercase" }}>
+            Document info
+          </p>
+          <InfoRow label="Type" value={initial?.contractType || null} />
+          <InfoRow label="Title" value={initial?.metadata.title || null} />
+          <InfoRow label="Value" value={initial?.metadata.contractValue || null} />
+          <InfoRow label="Effective" value={initial?.metadata.effectiveDate || null} />
+          <InfoRow label="Expires" value={initial?.metadata.expirationDate || null} />
+          <InfoRow label="Payment" value={initial?.metadata.paymentTerms || null} />
         </div>
-        <div style={{ background:"#fff", border:"1px solid #E5E7EB", borderRadius:11, padding:11 }}>
-          <p style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:"0.07em", margin:"0 0 7px" }}>Contract Health</p>
-          {[["Completeness",78,"#F59E0B"],["Compliance",92,"#22C55E"],["Risk Score",34,"#22C55E"]].map(([l,s,c])=>(
-            <div key={String(l)} style={{ marginBottom:7 }}>
-              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:2 }}>
-                <span style={{ fontSize:11, color:"#6B7280" }}>{l}</span>
-                <span style={{ fontSize:11, fontWeight:700, color:String(c) }}>{s}%</span>
-              </div>
-              <div style={{ height:5, borderRadius:3, background:"#F3F4F6" }}>
-                <div style={{ height:"100%", borderRadius:3, width:`${s}%`, background:String(c) }}/>
-              </div>
-            </div>
-          ))}
+
+        <div style={{ marginTop: 10, border: "1px solid #E5E7EB", borderRadius: 10, padding: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <p style={{ margin: 0, color: "#9CA3AF", fontSize: 10, fontWeight: 700, textTransform: "uppercase" }}>
+              Overall risk
+            </p>
+            {initial && <RiskBadge risk={initial.overallRisk} />}
+          </div>
+          <p style={{ margin: "8px 0 0", color: "#6B7280", fontSize: 10 }}>
+            {initial?.findings.length || 0} findings · {initial?.gaps.length || 0} gaps ·{" "}
+            {initial?.deadlines.length || 0} deadlines
+          </p>
         </div>
-        <div>
-          <p style={{ fontSize:10, fontWeight:700, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:"0.07em", margin:"0 0 5px 2px" }}>Quick Questions</p>
-          {QUICK.map(q=>(
-            <button key={q} onClick={()=>send(q)} style={{ display:"block", width:"100%", textAlign:"left", fontSize:12, padding:"7px 10px", borderRadius:7, border:"1px solid #E5E7EB", background:"#F9FAFB", color:"#374151", cursor:"pointer", marginBottom:3, fontFamily:"inherit", lineHeight:1.4 }}>
-              {q}
+
+        <div style={{ marginTop: 12 }}>
+          <p style={{ margin: "0 0 6px", color: "#9CA3AF", fontSize: 10, fontWeight: 700, textTransform: "uppercase" }}>
+            Quick questions
+          </p>
+          {CONTRACT_QUESTIONS.map((question) => (
+            <button
+              key={question}
+              onClick={() => void send(question)}
+              disabled={busy}
+              style={{
+                width: "100%",
+                marginBottom: 4,
+                padding: "7px 8px",
+                border: "1px solid #E5E7EB",
+                borderRadius: 7,
+                background: "#F9FAFB",
+                color: "#374151",
+                cursor: busy ? "not-allowed" : "pointer",
+                textAlign: "left",
+                fontFamily: "inherit",
+                fontSize: 11,
+                lineHeight: 1.35,
+              }}
+            >
+              {question}
             </button>
           ))}
         </div>
-      </div>
 
-      {/* Chat */}
-      <div style={{ flex:1, minWidth:0, display:"flex", flexDirection:"column" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 18px", borderBottom:"1px solid #F3F4F6", flexShrink:0 }}>
-          <div style={{ width:32, height:32, background:"#EFF6FF", borderRadius:8, display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <Icon icon="lucide:brain-circuit" width={16} height={16} style={{ color:"#0176D3" }}/>
+        <details style={{ marginTop: 10 }}>
+          <summary style={{ cursor: "pointer", color: "#6B7280", fontSize: 10, fontWeight: 700 }}>
+            SaaS gap-analysis baseline
+          </summary>
+          <ul style={{ margin: "7px 0 0", paddingLeft: 18, color: "#6B7280", fontSize: 10, lineHeight: 1.6 }}>
+            {GAP_ANALYSIS_BASELINE.map((item) => <li key={item}>{item}</li>)}
+          </ul>
+        </details>
+      </aside>
+
+      <section style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column" }}>
+        <header
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 9,
+            padding: "10px 18px",
+            borderBottom: "1px solid #E5E7EB",
+          }}
+        >
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Icon icon="lucide:brain-circuit" width={16} height={16} style={{ color: "#0176D3" }} />
           </div>
           <div>
-            <p style={{ fontSize:14, fontWeight:600, color:"#111827", margin:0 }}>Contract AI</p>
-            <p style={{ fontSize:12, color:"#9CA3AF", margin:0 }}>Ask anything about this contract</p>
+            <p style={{ margin: 0, color: "#111827", fontSize: 13, fontWeight: 700 }}>Contract AI</p>
+            <p style={{ margin: 0, color: "#9CA3AF", fontSize: 10 }}>GPT-4.1 mini · evidence-only answers</p>
           </div>
-          <span style={{ marginLeft:"auto", fontSize:11, padding:"2px 10px", borderRadius:20, background:"#DCFCE7", color:"#16A34A", fontWeight:600 }}>● Active</span>
-        </div>
-        <div style={{ flex:1, overflowY:"auto", padding:"14px 18px", display:"flex", flexDirection:"column", gap:12 }}>
-          {msgs.map((m,i)=>(
-            <div key={i} style={{ display:"flex", gap:9, justifyContent:m.role==="user"?"flex-end":"flex-start" }}>
-              {m.role==="ai"&&<div style={{ width:27, height:27, background:"#EFF6FF", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><Icon icon="lucide:brain-circuit" width={13} height={13} style={{ color:"#0176D3" }}/></div>}
-              <div style={{ maxWidth:"70%", padding:"10px 14px", fontSize:14, lineHeight:1.6, background:m.role==="user"?"#0176D3":"#F9FAFB", color:m.role==="user"?"#fff":"#374151", border:m.role==="ai"?"1px solid #E5E7EB":"none", borderRadius:m.role==="user"?"18px 18px 4px 18px":"18px 18px 18px 4px" }}>
-                <Txt s={m.text}/>
+          <span style={{ marginLeft: "auto", color: "#16A34A", fontSize: 10, fontWeight: 700 }}>● Ready</span>
+        </header>
+
+        <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 13 }}>
+          {messages.map((message, index) => (
+            <div key={index} style={{ display: "flex", justifyContent: message.role === "user" ? "flex-end" : "flex-start", gap: 8 }}>
+              {message.role === "ai" && (
+                <div style={{ width: 28, height: 28, flexShrink: 0, borderRadius: "50%", background: "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Icon icon="lucide:brain-circuit" width={13} height={13} style={{ color: "#0176D3" }} />
+                </div>
+              )}
+              <div
+                style={{
+                  maxWidth: message.role === "user" ? "72%" : "82%",
+                  padding: message.role === "user" ? "9px 13px" : "12px 14px",
+                  background: message.role === "user" ? "#0176D3" : "#F9FAFB",
+                  color: message.role === "user" ? "#fff" : "#374151",
+                  border: message.role === "ai" ? "1px solid #E5E7EB" : 0,
+                  borderRadius: message.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
+                  fontSize: 13,
+                  lineHeight: 1.55,
+                }}
+              >
+                {message.role === "user" ? message.text : <AnalysisMessage analysis={message.analysis} />}
               </div>
-              {m.role==="user"&&<div style={{ width:27, height:27, background:"#0176D3", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:10, fontWeight:700, color:"#fff" }}>JD</div>}
             </div>
           ))}
-          {busy&&(
-            <div style={{ display:"flex", gap:9 }}>
-              <div style={{ width:27, height:27, background:"#EFF6FF", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center" }}><Icon icon="lucide:brain-circuit" width={13} height={13} style={{ color:"#0176D3" }}/></div>
-              <div style={{ background:"#F9FAFB", border:"1px solid #E5E7EB", borderRadius:"18px 18px 18px 4px", padding:"12px 15px", display:"flex", gap:5, alignItems:"center" }}>
-                {[0,1,2].map(i=><div key={i} style={{ width:6, height:6, background:"#D1D5DB", borderRadius:"50%", animation:`caDot 1.2s ${i*0.2}s infinite` }}/>)}
-              </div>
+          {busy && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#6B7280", fontSize: 11 }}>
+              <Icon icon="lucide:loader-circle" width={15} height={15} className="animate-spin" style={{ color: "#0176D3" }} />
+              Reviewing contract evidence...
             </div>
           )}
-          <div ref={endRef}/>
+          {error && (
+            <div style={{ border: "1px solid #FECACA", background: "#FEF2F2", borderRadius: 8, padding: 9, color: "#B91C1C", fontSize: 11 }}>
+              {error}
+            </div>
+          )}
+          <div ref={endRef} />
         </div>
-        <div style={{ padding:"11px 18px 14px", borderTop:"1px solid #F3F4F6", flexShrink:0 }}>
-          <div style={{ display:"flex", alignItems:"flex-end", gap:9, background:"#F9FAFB", border:"1px solid #E5E7EB", borderRadius:11, padding:"9px 12px" }}>
-            <textarea value={inp} onChange={e=>setInp(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send(inp);}}} placeholder="Ask a question about this contract…" disabled={busy} rows={1}
-              style={{ flex:1, resize:"none", background:"transparent", border:"none", outline:"none", fontSize:14, color:"#111827", lineHeight:1.6, maxHeight:90, minHeight:22, fontFamily:"inherit" }}/>
-            <button onClick={()=>send(inp)} disabled={!inp.trim()||busy}
-              style={{ width:34, height:34, flexShrink:0, background:inp.trim()&&!busy?"#0176D3":"#E5E7EB", color:inp.trim()&&!busy?"#fff":"#9CA3AF", border:"none", borderRadius:9, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <Icon icon="lucide:send" width={14} height={14}/>
+
+        <footer style={{ padding: "11px 18px 14px", borderTop: "1px solid #E5E7EB" }}>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 8, border: "1px solid #D1D5DB", borderRadius: 10, background: "#F9FAFB", padding: "8px 10px" }}>
+            <textarea
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  void send(input);
+                }
+              }}
+              placeholder="Ask any question about this contract..."
+              disabled={busy}
+              rows={1}
+              style={{ minHeight: 22, maxHeight: 90, flex: 1, resize: "none", border: 0, outline: 0, background: "transparent", color: "#111827", fontFamily: "inherit", fontSize: 13 }}
+            />
+            <button
+              onClick={() => void send(input)}
+              disabled={!input.trim() || busy}
+              style={{ width: 34, height: 34, border: 0, borderRadius: 8, background: input.trim() && !busy ? "#0176D3" : "#E5E7EB", color: input.trim() && !busy ? "#fff" : "#9CA3AF", cursor: input.trim() && !busy ? "pointer" : "not-allowed" }}
+            >
+              <Icon icon="lucide:send" width={14} height={14} />
             </button>
           </div>
-          <p style={{ fontSize:11, color:"#D1D5DB", textAlign:"center", margin:"6px 0 0" }}>Press Enter to send · Shift+Enter for new line</p>
-        </div>
-      </div>
-      <style>{`@keyframes caDot{0%,80%,100%{opacity:.4;transform:translateY(0)}40%{opacity:1;transform:translateY(-4px)}}`}</style>
+          <p style={{ margin: "5px 0 0", color: "#9CA3AF", fontSize: 10, textAlign: "center" }}>
+            Evidence-only contract review · AI output requires human verification
+          </p>
+        </footer>
+      </section>
     </div>
   );
 }
