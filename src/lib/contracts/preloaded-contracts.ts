@@ -24,4 +24,9 @@ export const PRELOADED_CONTRACTS = [
     companyName: "BluePeak IT Solutions",
     contractType: "IT Service and Maintenance Agreement",
   },
+  {
+    filename: "VectorPeak AI Corporation - AI Platform Subscription Agreement.pdf",
+    companyName: "VectorPeak AI Corporation",
+    contractType: "AI Platform Subscription Agreement",
+  },
 ] as const;
