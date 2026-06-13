@@ -10,8 +10,11 @@ export const runtime = "nodejs";
 async function ensurePreloadedContracts(origin: string) {
   if (!process.env.POSTGRES_URL) throw new Error("POSTGRES_URL is not configured.");
 
+  const connectionUrl = new URL(process.env.POSTGRES_URL);
+  connectionUrl.searchParams.delete("sslmode");
+  connectionUrl.searchParams.delete("sslrootcert");
   const database = new pg.Client({
-    connectionString: process.env.POSTGRES_URL,
+    connectionString: connectionUrl.toString(),
     ssl: { rejectUnauthorized: false },
   });
   await database.connect();

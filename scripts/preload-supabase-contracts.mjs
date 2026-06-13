@@ -43,8 +43,11 @@ for (const name of required) {
   if (!process.env[name]) throw new Error(`${name} is required.`);
 }
 
+const connectionUrl = new URL(process.env.POSTGRES_URL);
+connectionUrl.searchParams.delete("sslmode");
+connectionUrl.searchParams.delete("sslrootcert");
 const database = new pg.Client({
-  connectionString: process.env.POSTGRES_URL,
+  connectionString: connectionUrl.toString(),
   ssl: { rejectUnauthorized: false },
 });
 await database.connect();
