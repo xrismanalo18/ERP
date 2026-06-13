@@ -134,11 +134,41 @@ function FindingList({
 }
 
 function AnalysisMessage({ analysis }: { analysis: ContractAnalysis }) {
+  const policyStyle = {
+    pass: { bg: "#F0FDF4", border: "#BBF7D0", color: "#166534", icon: "lucide:shield-check" },
+    review: { bg: "#FFFBEB", border: "#FDE68A", color: "#92400E", icon: "lucide:shield-alert" },
+    reject: { bg: "#FEF2F2", border: "#FECACA", color: "#991B1B", icon: "lucide:shield-x" },
+  }[analysis.policyDecision.status];
+
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}>
         <RiskBadge risk={analysis.overallRisk} />
         <span style={{ color: "#6B7280", fontSize: 11 }}>{analysis.contractType}</span>
+      </div>
+      <div style={{ marginBottom: 10, border: `1px solid ${policyStyle.border}`, background: policyStyle.bg, borderRadius: 8, padding: 9 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, color: policyStyle.color }}>
+          <Icon icon={policyStyle.icon} width={14} height={14} />
+          <strong style={{ fontSize: 11, textTransform: "uppercase" }}>
+            Policy decision: {analysis.policyDecision.status}
+          </strong>
+          {analysis.policyDecision.policyId && (
+            <span style={{ marginLeft: "auto", fontSize: 9, fontWeight: 700 }}>{analysis.policyDecision.policyId}</span>
+          )}
+        </div>
+        <p style={{ margin: "5px 0 0", color: policyStyle.color, fontSize: 11, lineHeight: 1.5 }}>
+          {analysis.policyDecision.rationale}
+        </p>
+        {analysis.policyDecision.matchedContractText && (
+          <details style={{ marginTop: 6 }}>
+            <summary style={{ cursor: "pointer", color: policyStyle.color, fontSize: 10, fontWeight: 700 }}>
+              Show policy match
+            </summary>
+            <p style={{ margin: "5px 0 0", color: "#4B5563", fontSize: 10, lineHeight: 1.45 }}>
+              “{analysis.policyDecision.matchedContractText}”
+            </p>
+          </details>
+        )}
       </div>
       <p style={{ margin: 0, whiteSpace: "pre-wrap", color: "#1F2937", fontSize: 13, lineHeight: 1.6 }}>
         {analysis.simpleAnswer}

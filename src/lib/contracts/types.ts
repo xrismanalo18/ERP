@@ -31,6 +31,15 @@ export type ContractMetadata = {
   paymentTerms: string | null;
 };
 
+export type PolicyDecision = {
+  status: "pass" | "review" | "reject";
+  policyId: string | null;
+  policyTitle: string | null;
+  rationale: string;
+  matchedContractText: string | null;
+  policyText: string | null;
+};
+
 export type ContractAnalysis = {
   mode: "initial_analysis" | "question";
   isSaasAgreement: boolean;
@@ -45,6 +54,7 @@ export type ContractAnalysis = {
   citations: ContractCitation[];
   notFound: boolean;
   warning: string | null;
+  policyDecision: PolicyDecision;
 };
 
 export type ExtractedContract = {

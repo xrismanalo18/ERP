@@ -1,0 +1,21 @@
+POLICY ID: DATA-AI-001
+TITLE: Prohibition on Vendor AI Training and Commercialization of Customer Data
+SEVERITY: HARD REJECT
+
+Company Policy:
+The company must reject any contract that permits a vendor or its affiliates to use
+Customer Data, confidential information, prompts, inputs, outputs, or derived data
+to train, improve, develop, market, sell, or commercialize the vendor's general
+models, products, or services.
+
+Required Acceptable Position:
+Customer Data, prompts, inputs, and outputs may be processed only to provide,
+secure, support, and maintain the contracted service for the customer. Any other
+use requires the customer's prior explicit written opt-in consent.
+
+Decision Rule:
+If the contract grants the vendor general AI-training, product-improvement, or
+commercialization rights over Customer Data, prompts, outputs, or derived data,
+the decision is REJECT. This rule cannot be downgraded to medium risk or approved
+through ordinary commercial negotiation. The prohibited language must be removed
+or replaced before the contract can proceed.

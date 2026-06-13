@@ -55,6 +55,22 @@ The `/api/contracts` endpoint idempotently creates the `contracts` table and
 private storage bucket, seeds missing preload files, and returns short-lived
 signed download URLs.
 
+## Policy RAG
+
+The analyzer retrieves relevant policy text from:
+
+```text
+public/policies/contract-review-policy.txt
+```
+
+The initial hard policy, `DATA-AI-001`, rejects contracts granting vendors the
+right to use customer data, prompts, outputs, or derived data to train or
+commercialize general vendor products. The generated
+`vendor-heavy-ai-platform-agreement.pdf` intentionally violates this policy.
+
+Policy retrieval is keyword-scored, while hard-reject enforcement is
+deterministic so the model cannot downgrade a confirmed violation.
+
 ## Vercel setup
 
 In the Vercel project, open **Settings > Environment Variables** and add:

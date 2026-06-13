@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { GAP_ANALYSIS_BASELINE } from "@/lib/contracts/questions";
+import { findHardPolicyEvidence, retrievePolicies } from "@/lib/contracts/policy-rag";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -55,6 +56,7 @@ const responseSchema = {
     "citations",
     "notFound",
     "warning",
+    "policyDecision",
   ],
   properties: {
     mode: { type: "string", enum: ["initial_analysis", "question"] },
@@ -103,6 +105,19 @@ const responseSchema = {
     citations: { type: "array", items: citationSchema },
     notFound: { type: "boolean" },
     warning: { anyOf: [{ type: "string" }, { type: "null" }] },
+    policyDecision: {
+      type: "object",
+      additionalProperties: false,
+      required: ["status", "policyId", "policyTitle", "rationale", "matchedContractText", "policyText"],
+      properties: {
+        status: { type: "string", enum: ["pass", "review", "reject"] },
+        policyId: { anyOf: [{ type: "string" }, { type: "null" }] },
+        policyTitle: { anyOf: [{ type: "string" }, { type: "null" }] },
+        rationale: { type: "string" },
+        matchedContractText: { anyOf: [{ type: "string" }, { type: "null" }] },
+        policyText: { anyOf: [{ type: "string" }, { type: "null" }] },
+      },
+    },
   },
 } as const;
 
@@ -117,6 +132,8 @@ Hard rules:
 - Rate risks low, medium, or high. High means material commercial/legal exposure or an urgent deadline.
 - This is contract review support, not legal advice.
 - Treat the expected contract type as SaaS/customer service agreement. If it is another type, explain this in warning.
+- Apply the retrieved company policy context. A HARD REJECT policy violation must result in policyDecision.status="reject" and overallRisk="high".
+- Always populate policyDecision. Use status="pass" when the contract does not violate retrieved policy, and never invent a policy violation.
 
 For initial analysis:
 - Extract contract metadata.
@@ -141,6 +158,13 @@ export async function POST(request: Request) {
   try {
     const input = RequestSchema.parse(await request.json());
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const origin = new URL(request.url).origin;
+    const policyResponse = await fetch(`${origin}/policies/contract-review-policy.txt`);
+    if (!policyResponse.ok) throw new Error("Unable to load contract review policy.");
+    const policyDocument = await policyResponse.text();
+    const policyQuery = `${input.question || "initial contract review"}\n${input.contractText}`;
+    const retrievedPolicies = retrievePolicies(policyDocument, policyQuery);
+    const hardPolicyEvidence = findHardPolicyEvidence(input.contractText);
     const task =
       input.mode === "initial_analysis"
         ? "Perform the complete initial SaaS contract analysis."
@@ -152,7 +176,7 @@ export async function POST(request: Request) {
         { role: "system", content: SYSTEM_PROMPT },
         {
           role: "user",
-          content: `Filename: ${input.filename}\nMode: ${input.mode}\nTask: ${task}\n\nCONTRACT TEXT\n${input.contractText}`,
+          content: `Filename: ${input.filename}\nMode: ${input.mode}\nTask: ${task}\n\nRETRIEVED COMPANY POLICY CONTEXT\n${retrievedPolicies.map(policy => policy.text).join("\n\n") || "No relevant policy retrieved."}\n\nCONTRACT TEXT\n${input.contractText}`,
         },
       ],
       text: {
@@ -169,7 +193,21 @@ export async function POST(request: Request) {
       throw new Error("The model returned no analysis.");
     }
 
-    return NextResponse.json(JSON.parse(response.output_text));
+    const analysis = JSON.parse(response.output_text);
+    if (hardPolicyEvidence) {
+      analysis.overallRisk = "high";
+      analysis.policyDecision = {
+        status: "reject",
+        policyId: "DATA-AI-001",
+        policyTitle: "Prohibition on Vendor AI Training and Commercialization of Customer Data",
+        rationale:
+          "The contract grants the vendor prohibited rights to use customer data, prompts, outputs, or derived data for AI training and commercialization. Company policy requires rejection until this language is removed or replaced.",
+        matchedContractText: hardPolicyEvidence,
+        policyText: retrievedPolicies[0]?.text || policyDocument,
+      };
+    }
+
+    return NextResponse.json(analysis);
   } catch (error) {
     const message =
       error instanceof z.ZodError
