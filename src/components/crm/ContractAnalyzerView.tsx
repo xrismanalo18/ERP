@@ -259,6 +259,7 @@ export default function ContractAnalyzerView({ section }: { section: "loaded" | 
   const [contract, setContract] = useState<ExtractedContract | null>(null);
   const [loadedContracts, setLoadedContracts] = useState<LoadedContract[]>([]);
   const [loadingContracts, setLoadingContracts] = useState(false);
+  const [previewContract, setPreviewContract] = useState<LoadedContract | null>(null);
   const [initial, setInitial] = useState<ContractAnalysis | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -312,6 +313,7 @@ export default function ContractAnalyzerView({ section }: { section: "loaded" | 
   }
 
   async function openLoadedContract(loaded: LoadedContract) {
+    setPreviewContract(null);
     setError(null);
     setStage("extracting");
     try {
@@ -344,6 +346,7 @@ export default function ContractAnalyzerView({ section }: { section: "loaded" | 
 
   function reset() {
     setContract(null);
+    setPreviewContract(null);
     setInitial(null);
     setMessages([]);
     setError(null);
@@ -382,7 +385,7 @@ export default function ContractAnalyzerView({ section }: { section: "loaded" | 
               {loadedContracts.map(loaded => (
                 <button
                   key={loaded.id}
-                  onClick={() => void openLoadedContract(loaded)}
+                  onClick={() => setPreviewContract(loaded)}
                   style={{ border: "1px solid #E5E7EB", borderRadius: 12, background: "#fff", padding: 16, textAlign: "left", cursor: "pointer", boxShadow: "0 1px 3px rgba(0,0,0,.05)", fontFamily: "inherit" }}
                 >
                   <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
@@ -396,10 +399,74 @@ export default function ContractAnalyzerView({ section }: { section: "loaded" | 
                   </div>
                   <div style={{ marginTop: 14, paddingTop: 10, borderTop: "1px solid #F3F4F6", display: "flex", justifyContent: "space-between", color: "#9CA3AF", fontSize: 10 }}>
                     <span>PDF · {(loaded.sizeBytes / 1024).toFixed(1)} KB</span>
-                    <span style={{ color: "#0176D3", fontWeight: 700 }}>Open analyzer →</span>
+                    <span style={{ color: "#0176D3", fontWeight: 700 }}>Preview →</span>
                   </div>
                 </button>
               ))}
+            </div>
+          )}
+          {previewContract && (
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Preview ${previewContract.displayName}`}
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 50,
+                background: "rgba(15, 23, 42, .58)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 24,
+              }}
+              onClick={() => setPreviewContract(null)}
+            >
+              <div
+                style={{
+                  width: "min(1100px, 94vw)",
+                  height: "min(820px, 90vh)",
+                  borderRadius: 14,
+                  background: "#fff",
+                  boxShadow: "0 24px 70px rgba(0,0,0,.28)",
+                  display: "flex",
+                  flexDirection: "column",
+                  overflow: "hidden",
+                }}
+                onClick={event => event.stopPropagation()}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderBottom: "1px solid #E5E7EB" }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 8, background: "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Icon icon="lucide:file-search" width={17} height={17} style={{ color: "#0176D3" }} />
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ margin: 0, color: "#111827", fontSize: 13, fontWeight: 700 }}>{previewContract.companyName}</p>
+                    <p style={{ margin: "2px 0 0", color: "#6B7280", fontSize: 11 }}>{previewContract.contractType}</p>
+                  </div>
+                  <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+                    <button
+                      onClick={() => setPreviewContract(null)}
+                      style={{ border: "1px solid #D1D5DB", borderRadius: 8, background: "#fff", color: "#374151", padding: "8px 14px", cursor: "pointer", fontSize: 11, fontWeight: 700 }}
+                    >
+                      Close
+                    </button>
+                    <button
+                      onClick={() => void openLoadedContract(previewContract)}
+                      style={{ border: 0, borderRadius: 8, background: "#0176D3", color: "#fff", padding: "8px 14px", cursor: "pointer", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}
+                    >
+                      <Icon icon="lucide:brain-circuit" width={13} height={13} />
+                      Analyze
+                    </button>
+                  </div>
+                </div>
+                <div style={{ flex: 1, minHeight: 0, background: "#E5E7EB", padding: 10 }}>
+                  <iframe
+                    src={previewContract.downloadUrl}
+                    title={`${previewContract.displayName} PDF preview`}
+                    style={{ width: "100%", height: "100%", border: 0, borderRadius: 8, background: "#fff" }}
+                  />
+                </div>
+              </div>
             </div>
           )}
         </div>
