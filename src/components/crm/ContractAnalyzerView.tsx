@@ -406,6 +406,7 @@ export default function ContractAnalyzerView({ section }: { section: "loaded" | 
               ))}
             </div>
           )}
+          <DealHealthPanel />
           {previewContract && (
             <div
               role="dialog"
