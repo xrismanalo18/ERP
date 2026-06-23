@@ -9,7 +9,6 @@ type Result = {
   averageScore: number;
   band: string;
   risk: string;
-  uploadedMae: number | null;
   bandCounts: Record<string, number>;
   modelMetrics: {
     dataset: { trainingRows: number; testingRows: number };
@@ -21,7 +20,6 @@ type Result = {
     contractId: string;
     clientName: string;
     predictedScore: number;
-    actualScore: number | null;
     band: string;
     risk: string;
   }[];
@@ -54,27 +52,26 @@ export default function DealHealthPanel() {
   }
 
   return (
-    <section style={{ width: "min(1120px, 100%)", marginTop: 22 }}>
-      <div style={{ border: "1px solid #DCE3EC", borderRadius: 14, background: "#fff", padding: 18, boxShadow: "0 2px 8px rgba(15,23,42,.06)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 11, flexWrap: "wrap" }}>
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: "#ECFDF5", display: "grid", placeItems: "center" }}>
-            <Icon icon="lucide:gauge" width={20} height={20} style={{ color: "#047857" }} />
+    <section style={{ width: "min(1120px, 100%)", margin: "0 auto" }}>
+      <div style={{ border: "1px solid #DCE3EC", borderRadius: 16, background: "#fff", padding: 20, boxShadow: "0 8px 24px rgba(15,23,42,.07)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: "linear-gradient(135deg,#D1FAE5,#DBEAFE)", display: "grid", placeItems: "center" }}>
+            <Icon icon="lucide:gauge" width={22} height={22} style={{ color: "#047857" }} />
           </div>
           <div>
-            <p style={{ margin: 0, color: "#047857", fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".08em" }}>XGBoost prediction</p>
-            <h3 style={{ margin: "3px 0 0", color: "#111827", fontSize: 17 }}>Deal Health Score</h3>
-            <p style={{ margin: "3px 0 0", color: "#6B7280", fontSize: 11 }}>Upload the IT hardware sales workbook to predict portfolio and contract-level health.</p>
+            <p style={{ margin: 0, color: "#047857", fontSize: 10, fontWeight: 900, textTransform: "uppercase", letterSpacing: ".09em" }}>XGBoost prediction</p>
+            <h3 style={{ margin: "3px 0 0", color: "#0F172A", fontSize: 19 }}>Deal Health Score</h3>
+            <p style={{ margin: "4px 0 0", color: "#64748B", fontSize: 11 }}>Predict portfolio and contract-level health from the IT hardware sales workbook.</p>
           </div>
           <form onSubmit={score} style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <input name="file" type="file" accept=".xlsx,.xls,.csv" required style={{ maxWidth: 310, border: "1px solid #D1D5DB", borderRadius: 8, padding: 8, fontSize: 11 }} />
-            <button disabled={busy} style={{ border: 0, borderRadius: 8, background: "#0176D3", color: "#fff", padding: "10px 14px", fontWeight: 700, cursor: busy ? "wait" : "pointer" }}>
+            <input name="file" type="file" accept=".xlsx,.xls,.csv" required style={{ maxWidth: 310, border: "1px solid #CBD5E1", borderRadius: 9, padding: 8, fontSize: 11, background: "#F8FAFC" }} />
+            <button disabled={busy} style={{ border: 0, borderRadius: 9, background: "linear-gradient(135deg,#0176D3,#0F5CA8)", color: "#fff", padding: "10px 15px", fontWeight: 800, boxShadow: "0 4px 10px rgba(1,118,211,.24)", cursor: busy ? "wait" : "pointer" }}>
               {busy ? "Scoring..." : "Predict health"}
             </button>
           </form>
         </div>
         {error && <p style={{ margin: "12px 0 0", borderRadius: 8, background: "#FEF2F2", color: "#B91C1C", padding: 9, fontSize: 11 }}>{error}</p>}
       </div>
-
       {result && <Results result={result} />}
     </section>
   );
@@ -83,77 +80,123 @@ export default function DealHealthPanel() {
 function Results({ result }: { result: Result }) {
   const gainTotal = result.topDrivers.reduce((sum, item) => sum + item.gain, 0) || 1;
   return (
-    <div style={{ marginTop: 12, border: "1px solid #DCE3EC", borderRadius: 14, background: "#fff", padding: 18, boxShadow: "0 2px 8px rgba(15,23,42,.06)" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto minmax(180px,auto)", gap: 20, alignItems: "center" }}>
+    <div style={{ marginTop: 14, border: "1px solid #DCE3EC", borderRadius: 16, background: "linear-gradient(180deg,#FFFFFF,#F8FAFC)", padding: 20, boxShadow: "0 10px 30px rgba(15,23,42,.08)" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto minmax(180px,auto)", gap: 22, alignItems: "center" }}>
         <div>
-          <p style={{ margin: 0, color: "#6B7280", fontSize: 11 }}>{result.filename} · {result.rowCount.toLocaleString()} contracts</p>
-          <h3 style={{ margin: "5px 0 0", color: "#111827", fontSize: 18 }}>Portfolio Deal Health</h3>
+          <p style={{ margin: 0, color: "#64748B", fontSize: 11 }}>{result.filename} · {result.rowCount.toLocaleString()} contracts</p>
+          <h3 style={{ margin: "5px 0 0", color: "#0F172A", fontSize: 20 }}>Portfolio Deal Health</h3>
         </div>
-        <div style={{ width: 112, height: 112, borderRadius: "50%", border: `9px solid ${riskColor(result.risk)}`, display: "grid", placeContent: "center", textAlign: "center" }}>
-          <strong style={{ color: "#111827", fontSize: 30, lineHeight: 1 }}>{result.averageScore.toFixed(1)}</strong>
-          <span style={{ color: "#9CA3AF", fontSize: 10 }}>/ 100</span>
+        <div style={{ width: 116, height: 116, borderRadius: "50%", border: `9px solid ${riskColor(result.risk)}`, background: riskSoftBg(result.risk), display: "grid", placeContent: "center", textAlign: "center", boxShadow: `0 0 0 6px ${riskBg(result.risk)}` }}>
+          <strong style={{ color: "#0F172A", fontSize: 32, lineHeight: 1 }}>{result.averageScore.toFixed(1)}</strong>
+          <span style={{ color: "#64748B", fontSize: 10 }}>/ 100</span>
         </div>
         <div>
-          <span style={{ display: "inline-block", borderRadius: 999, background: riskBg(result.risk), color: riskColor(result.risk), padding: "4px 9px", fontSize: 10, fontWeight: 800 }}>{result.band}</span>
-          <p style={{ margin: "8px 0 2px", color: "#111827", fontSize: 13, fontWeight: 700 }}>{result.risk} portfolio risk</p>
-          <span style={{ color: "#6B7280", fontSize: 10 }}>Model R² {result.modelMetrics.model.r2.toFixed(3)}</span>
+          <BandBadge band={result.band} />
+          <p style={{ margin: "9px 0 3px", color: "#0F172A", fontSize: 14, fontWeight: 800 }}>{result.risk} portfolio risk</p>
+          <span style={{ color: "#64748B", fontSize: 10 }}>Model R² {result.modelMetrics.model.r2.toFixed(3)}</span>
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5,minmax(0,1fr))", gap: 8, marginTop: 16 }}>
-        <Metric label="Test MAE" value={result.modelMetrics.model.mae.toFixed(2)} />
-        <Metric label="Test RMSE" value={result.modelMetrics.model.rmse.toFixed(2)} />
-        <Metric label="Baseline gain" value={`${result.modelMetrics.maeImprovementPct.toFixed(1)}%`} />
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(180px,260px)", gap: 10, marginTop: 20 }}>
         <Metric label="Train / Test" value={`${result.modelMetrics.dataset.trainingRows} / ${result.modelMetrics.dataset.testingRows}`} />
-        <Metric label="Workbook MAE" value={result.uploadedMae === null ? "N/A" : result.uploadedMae.toFixed(2)} />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 22, marginTop: 18 }}>
-        <div>
-          <h4 style={{ margin: "0 0 9px", color: "#374151", fontSize: 12 }}>Health distribution</h4>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginTop: 20 }}>
+        <div style={panelStyle}>
+          <h4 style={sectionTitle}>Health distribution</h4>
           {bands.map(band => {
             const count = result.bandCounts[band] || 0;
             return (
-              <div key={band} style={{ display: "grid", gridTemplateColumns: "76px 1fr 36px", alignItems: "center", gap: 7, marginBottom: 7, fontSize: 10 }}>
-                <span>{band}</span>
-                <div style={{ height: 7, borderRadius: 99, background: "#E5E7EB", overflow: "hidden" }}>
-                  <i style={{ display: "block", width: `${count / result.rowCount * 100}%`, height: "100%", background: "#0176D3" }} />
+              <div key={band} style={{ display: "grid", gridTemplateColumns: "90px 1fr 36px", alignItems: "center", gap: 8, marginBottom: 9 }}>
+                <BandBadge band={band} compact />
+                <div style={{ height: 8, borderRadius: 99, background: "#E2E8F0", overflow: "hidden" }}>
+                  <i style={{ display: "block", width: `${count / result.rowCount * 100}%`, height: "100%", background: bandColor(band) }} />
                 </div>
-                <strong style={{ textAlign: "right" }}>{count}</strong>
+                <strong style={{ color: "#334155", textAlign: "right", fontSize: 10 }}>{count}</strong>
               </div>
             );
           })}
         </div>
-        <div>
-          <h4 style={{ margin: "0 0 9px", color: "#374151", fontSize: 12 }}>Top model drivers</h4>
+        <div style={panelStyle}>
+          <h4 style={sectionTitle}>Top model drivers</h4>
           {result.topDrivers.map(item => (
-            <div key={item.feature} style={{ display: "grid", gridTemplateColumns: "155px 1fr", alignItems: "center", gap: 7, marginBottom: 7, fontSize: 10 }}>
-              <span>{item.feature}</span>
-              <div style={{ height: 7, borderRadius: 99, background: "#E5E7EB", overflow: "hidden" }}>
-                <i style={{ display: "block", width: `${item.gain / gainTotal * 100}%`, height: "100%", background: "#10B981" }} />
+            <div key={item.feature} style={{ display: "grid", gridTemplateColumns: "155px 1fr", alignItems: "center", gap: 8, marginBottom: 9, fontSize: 10 }}>
+              <span style={{ color: "#475569" }}>{item.feature}</span>
+              <div style={{ height: 8, borderRadius: 99, background: "#E2E8F0", overflow: "hidden" }}>
+                <i style={{ display: "block", width: `${item.gain / gainTotal * 100}%`, height: "100%", background: "linear-gradient(90deg,#0EA5E9,#10B981)" }} />
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      <h4 style={{ margin: "18px 0 8px", color: "#374151", fontSize: 12 }}>Lowest predicted deal health</h4>
-      <div style={{ maxHeight: 330, overflow: "auto", border: "1px solid #E5E7EB", borderRadius: 9 }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}>
-          <thead><tr>{["Contract", "Client", "Predicted", "Actual", "Band", "Risk"].map(label => <th key={label} style={{ position: "sticky", top: 0, background: "#F9FAFB", color: "#6B7280", padding: 8, textAlign: "left" }}>{label}</th>)}</tr></thead>
-          <tbody>{result.contracts.map(item => <tr key={item.contractId}>
-            <td style={cell}><strong>{item.contractId}</strong></td><td style={cell}>{item.clientName}</td><td style={cell}>{item.predictedScore.toFixed(1)}</td><td style={cell}>{item.actualScore?.toFixed(1) ?? "—"}</td><td style={cell}>{item.band}</td><td style={cell}>{item.risk}</td>
-          </tr>)}</tbody>
+      <h4 style={{ ...sectionTitle, marginTop: 20 }}>Lowest predicted deal health</h4>
+      <div style={{ maxHeight: 390, overflow: "auto", border: "1px solid #DCE3EC", borderRadius: 12, background: "#fff" }}>
+        <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: 11 }}>
+          <thead>
+            <tr>{["Contract", "Client", "Predicted Score", "Health Band", "Risk"].map(label => <th key={label} style={{ position: "sticky", top: 0, zIndex: 1, background: "#F1F5F9", color: "#475569", padding: "10px 12px", textAlign: "left", textTransform: "uppercase", letterSpacing: ".04em", fontSize: 9 }}>{label}</th>)}</tr>
+          </thead>
+          <tbody>{result.contracts.map(item => (
+            <tr key={item.contractId} style={{ background: bandRowBg(item.band) }}>
+              <td style={{ ...cell, borderLeft: `4px solid ${bandColor(item.band)}` }}><strong style={{ color: "#0F172A" }}>{item.contractId}</strong></td>
+              <td style={cell}>{item.clientName}</td>
+              <td style={cell}><span style={{ display: "inline-grid", placeItems: "center", minWidth: 50, borderRadius: 8, background: bandColor(item.band), color: "#fff", padding: "5px 8px", fontSize: 12, fontWeight: 900 }}>{item.predictedScore.toFixed(1)}</span></td>
+              <td style={cell}><BandBadge band={item.band} /></td>
+              <td style={cell}><RiskBadge risk={item.risk} /></td>
+            </tr>
+          ))}</tbody>
         </table>
       </div>
     </div>
   );
 }
 
-const cell = { borderTop: "1px solid #EEF2F7", padding: 8 } as const;
+const cell = { borderTop: "1px solid #E2E8F0", padding: "10px 12px", color: "#334155" } as const;
+const panelStyle = { border: "1px solid #E2E8F0", borderRadius: 12, background: "#fff", padding: 14 } as const;
+const sectionTitle = { margin: "0 0 11px", color: "#334155", fontSize: 12, fontWeight: 800 } as const;
 
 function Metric({ label, value }: { label: string; value: string }) {
-  return <div style={{ border: "1px solid #E5E7EB", borderRadius: 8, background: "#F9FAFB", padding: 9 }}><span style={{ display: "block", color: "#9CA3AF", fontSize: 8, fontWeight: 800, textTransform: "uppercase" }}>{label}</span><strong style={{ display: "block", marginTop: 4, color: "#111827", fontSize: 16 }}>{value}</strong></div>;
+  return <div style={{ border: "1px solid #DCE3EC", borderRadius: 10, background: "#fff", padding: 11, boxShadow: "0 2px 5px rgba(15,23,42,.04)" }}><span style={{ display: "block", color: "#64748B", fontSize: 8, fontWeight: 900, textTransform: "uppercase", letterSpacing: ".05em" }}>{label}</span><strong style={{ display: "block", marginTop: 5, color: "#0F172A", fontSize: 18 }}>{value}</strong></div>;
+}
+
+function BandBadge({ band, compact = false }: { band: string; compact?: boolean }) {
+  return <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 999, background: bandBg(band), color: bandColor(band), border: `1px solid ${bandBorder(band)}`, padding: compact ? "2px 6px" : "4px 9px", fontSize: compact ? 8 : 10, fontWeight: 900, whiteSpace: "nowrap" }}>{band}</span>;
+}
+
+function RiskBadge({ risk }: { risk: string }) {
+  return <span style={{ display: "inline-flex", alignItems: "center", gap: 5, borderRadius: 999, background: riskBg(risk), color: riskColor(risk), padding: "4px 9px", fontSize: 10, fontWeight: 900 }}><i style={{ width: 6, height: 6, borderRadius: "50%", background: riskColor(risk) }} />{risk}</span>;
+}
+
+function bandColor(band: string) {
+  if (band === "Critical") return "#B91C1C";
+  if (band === "At Risk") return "#C2410C";
+  if (band === "Watch List") return "#B45309";
+  if (band === "Healthy") return "#047857";
+  return "#1D4ED8";
+}
+
+function bandBg(band: string) {
+  if (band === "Critical") return "#FEE2E2";
+  if (band === "At Risk") return "#FFEDD5";
+  if (band === "Watch List") return "#FEF3C7";
+  if (band === "Healthy") return "#D1FAE5";
+  return "#DBEAFE";
+}
+
+function bandBorder(band: string) {
+  if (band === "Critical") return "#FCA5A5";
+  if (band === "At Risk") return "#FDBA74";
+  if (band === "Watch List") return "#FCD34D";
+  if (band === "Healthy") return "#6EE7B7";
+  return "#93C5FD";
+}
+
+function bandRowBg(band: string) {
+  if (band === "Critical") return "#FFF7F7";
+  if (band === "At Risk") return "#FFF9F5";
+  if (band === "Watch List") return "#FFFCF2";
+  if (band === "Healthy") return "#F5FFFA";
+  return "#F6F9FF";
 }
 
 function riskColor(risk: string) {
@@ -168,4 +211,11 @@ function riskBg(risk: string) {
   if (risk === "High") return "#FFEDD5";
   if (risk === "Medium") return "#FEF3C7";
   return "#D1FAE5";
+}
+
+function riskSoftBg(risk: string) {
+  if (risk === "Critical") return "#FFF1F2";
+  if (risk === "High") return "#FFF7ED";
+  if (risk === "Medium") return "#FFFBEB";
+  return "#ECFDF5";
 }
