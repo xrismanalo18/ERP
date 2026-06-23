@@ -3,7 +3,6 @@
 import { Icon } from "@iconify/react";
 import { useEffect, useRef, useState } from "react";
 
-import DealHealthPanel from "@/components/crm/DealHealthPanel";
 import { extractContract } from "@/lib/contracts/extract-contract";
 import type { LoadedContract } from "@/lib/contracts/loaded-contracts";
 import { CONTRACT_QUESTIONS, GAP_ANALYSIS_BASELINE } from "@/lib/contracts/questions";
@@ -406,7 +405,6 @@ export default function ContractAnalyzerView({ section }: { section: "loaded" | 
               ))}
             </div>
           )}
-          <DealHealthPanel />
           {previewContract && (
             <div
               role="dialog"
@@ -609,7 +607,6 @@ export default function ContractAnalyzerView({ section }: { section: "loaded" | 
           Demo limitation: scanned PDFs are not supported. Files are analyzed in memory and are
           not saved by this application.
         </p>
-        <DealHealthPanel />
       </div>
     );
   }

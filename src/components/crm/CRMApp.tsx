@@ -10,6 +10,7 @@ import CasesView from "./CasesView";
 
 import ReportsView from "./ReportsView";
 import ContractAnalyzerView from "./ContractAnalyzerView";
+import DealHealthView from "./DealHealthView";
 
 export default function CRMApp() {
   const [view, setView] = useState<CRMView>("dashboard");
@@ -26,6 +27,7 @@ export default function CRMApp() {
       case "cases":      return <CasesView />;
       case "reports":    return <ReportsView />;
       case "contracts":  return <ContractAnalyzerView section={contractSection} />;
+      case "dealhealth": return <DealHealthView />;
       default:           return <DashboardView />;
     }
   };
