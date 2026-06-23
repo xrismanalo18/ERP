@@ -9,6 +9,31 @@ import { createSupabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
+async function localPreloadedContracts(): Promise<LoadedContract[]> {
+  return Promise.all(
+    PRELOADED_CONTRACTS.map(async (contract, index) => {
+      const filePath = path.join(
+        process.cwd(),
+        "public",
+        "preloaded-contracts",
+        contract.filename,
+      );
+      const stats = await fs.stat(filePath);
+      return {
+        id: `local-${index + 1}`,
+        displayName: `${contract.companyName} - ${contract.contractType}`,
+        companyName: contract.companyName,
+        contractType: contract.contractType,
+        filename: contract.filename,
+        mimeType: "application/pdf",
+        sizeBytes: stats.size,
+        downloadUrl: `/preloaded-contracts/${encodeURIComponent(contract.filename)}`,
+        createdAt: stats.mtime.toISOString(),
+      };
+    }),
+  );
+}
+
 async function ensurePreloadedContracts() {
   if (!process.env.POSTGRES_URL) throw new Error("POSTGRES_URL is not configured.");
 
@@ -79,6 +104,10 @@ async function ensurePreloadedContracts() {
 
 export async function GET() {
   try {
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ contracts: await localPreloadedContracts() });
+    }
+
     await ensurePreloadedContracts();
     const supabase = createSupabaseAdmin();
     const { data, error } = await supabase
