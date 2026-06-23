@@ -136,7 +136,7 @@ function Results({ result }: { result: Result }) {
         </div>
       </div>
 
-      <h4 style={{ ...sectionTitle, marginTop: 20 }}>Lowest predicted deal health</h4>
+      <h4 style={{ ...sectionTitle, marginTop: 20 }}>All uploaded contracts · lowest to highest score</h4>
       <div style={{ maxHeight: 390, overflow: "auto", border: "1px solid #DCE3EC", borderRadius: 12, background: "#fff" }}>
         <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: 11 }}>
           <thead>

@@ -187,8 +187,7 @@ export function summarizeDealHealth(rows: ContractRow[]) {
     modelMetrics: model.metrics,
     topDrivers: uploadedFileDrivers(vectors, predictions.map(item => item.predictedScore)),
     contracts: [...predictions]
-      .sort((left, right) => left.predictedScore - right.predictedScore)
-      .slice(0, 25),
+      .sort((left, right) => left.predictedScore - right.predictedScore),
   };
 }
 
