@@ -158,6 +158,7 @@ export function predictDealHealth(row: ContractRow) {
 
 export function summarizeDealHealth(rows: ContractRow[]) {
   const predictions = rows.map(predictDealHealth);
+  const vectors = rows.map(vectorize);
   const averageScore = predictions.length
     ? predictions.reduce((total, item) => total + item.predictedScore, 0) / predictions.length
     : 0;
@@ -184,14 +185,59 @@ export function summarizeDealHealth(rows: ContractRow[]) {
     bandCounts,
     uploadedMae,
     modelMetrics: model.metrics,
-    topDrivers: model.featureImportances.slice(0, 8).map(item => ({
-      feature: readableFeatureName(item.feature),
-      gain: item.gain,
-    })),
+    topDrivers: uploadedFileDrivers(vectors, predictions.map(item => item.predictedScore)),
     contracts: [...predictions]
       .sort((left, right) => left.predictedScore - right.predictedScore)
       .slice(0, 25),
   };
+}
+
+function uploadedFileDrivers(vectors: number[][], originalScores: number[]) {
+  const groups: { feature: string; indices: number[]; baseline: number[] }[] = [];
+
+  model.numericColumns.forEach((column, index) => {
+    groups.push({
+      feature: column,
+      indices: [index],
+      baseline: [model.numericMedians[column]],
+    });
+  });
+
+  let offset = model.numericColumns.length;
+  for (const column of model.categoricalColumns) {
+    const categories = model.categoricalValues[column];
+    const fallback = model.categoricalFallbacks[column];
+    groups.push({
+      feature: column,
+      indices: categories.map((_, index) => offset + index),
+      baseline: categories.map(category => category === fallback ? 1 : 0),
+    });
+    offset += categories.length;
+  }
+
+  const impacts = groups.map(group => {
+    let totalImpact = 0;
+    vectors.forEach((vector, rowIndex) => {
+      const originalValues = group.indices.map(index => vector[index]);
+      group.indices.forEach((index, valueIndex) => {
+        vector[index] = group.baseline[valueIndex];
+      });
+      totalImpact += Math.abs(originalScores[rowIndex] - scoreVector(vector));
+      group.indices.forEach((index, valueIndex) => {
+        vector[index] = originalValues[valueIndex];
+      });
+    });
+    return {
+      feature: readableFeatureName(group.feature),
+      impact: vectors.length ? totalImpact / vectors.length : 0,
+    };
+  }).filter(item => item.impact > 0);
+
+  const total = impacts.reduce((sum, item) => sum + item.impact, 0) || 1;
+  return impacts
+    .map(item => ({ ...item, percentage: item.impact / total * 100 }))
+    .sort((left, right) => right.percentage - left.percentage)
+    .slice(0, 8);
 }
 
 function readableFeatureName(feature: string) {

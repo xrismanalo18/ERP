@@ -10,12 +10,7 @@ type Result = {
   band: string;
   risk: string;
   bandCounts: Record<string, number>;
-  modelMetrics: {
-    dataset: { trainingRows: number; testingRows: number };
-    model: { mae: number; rmse: number; r2: number };
-    maeImprovementPct: number;
-  };
-  topDrivers: { feature: string; gain: number }[];
+  topDrivers: { feature: string; impact: number; percentage: number }[];
   contracts: {
     contractId: string;
     clientName: string;
@@ -78,7 +73,11 @@ export default function DealHealthPanel() {
 }
 
 function Results({ result }: { result: Result }) {
-  const gainTotal = result.topDrivers.reduce((sum, item) => sum + item.gain, 0) || 1;
+  const criticalCount = result.bandCounts.Critical || 0;
+  const atRiskCount = result.bandCounts["At Risk"] || 0;
+  const watchCount = result.bandCounts["Watch List"] || 0;
+  const healthyCount = (result.bandCounts.Healthy || 0) + (result.bandCounts.Excellent || 0);
+  const highRiskCount = criticalCount + atRiskCount;
   return (
     <div style={{ marginTop: 14, border: "1px solid #DCE3EC", borderRadius: 16, background: "linear-gradient(180deg,#FFFFFF,#F8FAFC)", padding: 20, boxShadow: "0 10px 30px rgba(15,23,42,.08)" }}>
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto minmax(180px,auto)", gap: 22, alignItems: "center" }}>
@@ -93,17 +92,20 @@ function Results({ result }: { result: Result }) {
         <div>
           <BandBadge band={result.band} />
           <p style={{ margin: "9px 0 3px", color: "#0F172A", fontSize: 14, fontWeight: 800 }}>{result.risk} portfolio risk</p>
-          <span style={{ color: "#64748B", fontSize: 10 }}>Model R² {result.modelMetrics.model.r2.toFixed(3)}</span>
+          <span style={{ color: "#64748B", fontSize: 10 }}>Calculated from this uploaded workbook only</span>
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(180px,260px)", gap: 10, marginTop: 20 }}>
-        <Metric label="Train / Test" value={`${result.modelMetrics.dataset.trainingRows} / ${result.modelMetrics.dataset.testingRows}`} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,minmax(0,1fr))", gap: 10, marginTop: 20 }}>
+        <Metric label="Uploaded contracts" value={result.rowCount.toLocaleString()} />
+        <Metric label="Critical + At Risk" value={highRiskCount.toLocaleString()} tone="#C2410C" />
+        <Metric label="Watch List" value={watchCount.toLocaleString()} tone="#B45309" />
+        <Metric label="Healthy + Excellent" value={healthyCount.toLocaleString()} tone="#047857" />
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginTop: 20 }}>
         <div style={panelStyle}>
-          <h4 style={sectionTitle}>Health distribution</h4>
+          <h4 style={sectionTitle}>Health distribution from uploaded workbook</h4>
           {bands.map(band => {
             const count = result.bandCounts[band] || 0;
             return (
@@ -118,15 +120,19 @@ function Results({ result }: { result: Result }) {
           })}
         </div>
         <div style={panelStyle}>
-          <h4 style={sectionTitle}>Top model drivers</h4>
+          <h4 style={sectionTitle}>Score drivers from uploaded workbook</h4>
           {result.topDrivers.map(item => (
-            <div key={item.feature} style={{ display: "grid", gridTemplateColumns: "155px 1fr", alignItems: "center", gap: 8, marginBottom: 9, fontSize: 10 }}>
+            <div key={item.feature} style={{ display: "grid", gridTemplateColumns: "155px 1fr 42px", alignItems: "center", gap: 8, marginBottom: 9, fontSize: 10 }}>
               <span style={{ color: "#475569" }}>{item.feature}</span>
               <div style={{ height: 8, borderRadius: 99, background: "#E2E8F0", overflow: "hidden" }}>
-                <i style={{ display: "block", width: `${item.gain / gainTotal * 100}%`, height: "100%", background: "linear-gradient(90deg,#0EA5E9,#10B981)" }} />
+                <i style={{ display: "block", width: `${item.percentage}%`, height: "100%", background: "linear-gradient(90deg,#0EA5E9,#10B981)" }} />
               </div>
+              <strong style={{ color: "#0F766E", textAlign: "right", fontSize: 10 }}>{item.percentage.toFixed(1)}%</strong>
             </div>
           ))}
+          <p style={{ margin: "10px 0 0", color: "#94A3B8", fontSize: 9, lineHeight: 1.45 }}>
+            Percentages show each field&apos;s relative score sensitivity across contracts in this uploaded file.
+          </p>
         </div>
       </div>
 
@@ -155,8 +161,8 @@ const cell = { borderTop: "1px solid #E2E8F0", padding: "10px 12px", color: "#33
 const panelStyle = { border: "1px solid #E2E8F0", borderRadius: 12, background: "#fff", padding: 14 } as const;
 const sectionTitle = { margin: "0 0 11px", color: "#334155", fontSize: 12, fontWeight: 800 } as const;
 
-function Metric({ label, value }: { label: string; value: string }) {
-  return <div style={{ border: "1px solid #DCE3EC", borderRadius: 10, background: "#fff", padding: 11, boxShadow: "0 2px 5px rgba(15,23,42,.04)" }}><span style={{ display: "block", color: "#64748B", fontSize: 8, fontWeight: 900, textTransform: "uppercase", letterSpacing: ".05em" }}>{label}</span><strong style={{ display: "block", marginTop: 5, color: "#0F172A", fontSize: 18 }}>{value}</strong></div>;
+function Metric({ label, value, tone = "#0F172A" }: { label: string; value: string; tone?: string }) {
+  return <div style={{ border: "1px solid #DCE3EC", borderRadius: 10, background: "#fff", padding: 11, boxShadow: "0 2px 5px rgba(15,23,42,.04)" }}><span style={{ display: "block", color: "#64748B", fontSize: 8, fontWeight: 900, textTransform: "uppercase", letterSpacing: ".05em" }}>{label}</span><strong style={{ display: "block", marginTop: 5, color: tone, fontSize: 18 }}>{value}</strong></div>;
 }
 
 function BandBadge({ band, compact = false }: { band: string; compact?: boolean }) {
