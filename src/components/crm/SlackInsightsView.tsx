@@ -166,10 +166,6 @@ export default function SlackInsightsView() {
               Slack data mining from PostgreSQL
             </div>
             <h1 style={{ margin: "12px 0 6px", color: "#0F172A", fontSize: 30, lineHeight: 1.1 }}>Slack Insights</h1>
-            <p style={{ margin: 0, color: "#64748B", maxWidth: 760 }}>
-              Contract-focused Slack messages are seeded when missing, stored in PostgreSQL, then mined for client risk, renewal timing,
-              blocker themes, and growth signals. Any new row added to the Slack message table appears here on refresh.
-            </p>
           </div>
           <button
             onClick={() => window.location.reload()}
