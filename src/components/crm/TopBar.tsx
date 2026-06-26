@@ -13,6 +13,7 @@ const TITLES: Record<CRMView, string> = {
   reports: "Reports & Analytics",
   contracts: "Contract Analyzer",
   dealhealth: "Deal Health Score",
+  slackinsights: "Slack Insights",
 };
 
 interface TopBarProps {

@@ -11,6 +11,7 @@ import CasesView from "./CasesView";
 import ReportsView from "./ReportsView";
 import ContractAnalyzerView from "./ContractAnalyzerView";
 import DealHealthView from "./DealHealthView";
+import SlackInsightsView from "./SlackInsightsView";
 
 export default function CRMApp() {
   const [view, setView] = useState<CRMView>("dashboard");
@@ -28,6 +29,7 @@ export default function CRMApp() {
       case "reports":    return <ReportsView />;
       case "contracts":  return <ContractAnalyzerView section={contractSection} />;
       case "dealhealth": return <DealHealthView />;
+      case "slackinsights": return <SlackInsightsView />;
       default:           return <DashboardView />;
     }
   };
