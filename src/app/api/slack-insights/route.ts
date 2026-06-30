@@ -50,6 +50,11 @@ type SlackConversationInfo = SlackApiResponse<{
   channel?: { id?: string; name?: string; is_im?: boolean };
 }>;
 
+type SlackConversationList = SlackApiResponse<{
+  channels?: Array<{ id?: string; name?: string; is_member?: boolean; is_im?: boolean; is_channel?: boolean; is_group?: boolean }>;
+  response_metadata?: { next_cursor?: string };
+}>;
+
 type SlackUserInfo = SlackApiResponse<{
   user?: {
     id?: string;
@@ -216,6 +221,29 @@ async function fetchSlackMessages(channelIds: string[]) {
   return enrichWithOpenAI(normalized);
 }
 
+async function discoverReadableChannelIds() {
+  const ids: string[] = [];
+  let cursor = "";
+
+  do {
+    const payload = await slackRequest<SlackConversationList>("conversations.list", {
+      types: "public_channel,private_channel,im,mpim",
+      exclude_archived: "true",
+      limit: 200,
+      cursor,
+    });
+
+    for (const channel of payload.channels || []) {
+      if (!channel.id) continue;
+      if ((channel.is_channel || channel.is_group) && !channel.is_member) continue;
+      ids.push(channel.id);
+    }
+
+    cursor = payload.response_metadata?.next_cursor || "";
+  } while (cursor && ids.length < 20);
+
+  return Array.from(new Set(ids)).slice(0, 10);
+}
 function slackTsToIso(ts: string) {
   const seconds = Number(ts.split(".")[0]);
   return new Date(seconds * 1000).toISOString();
@@ -481,7 +509,32 @@ export async function GET() {
     await database.connect();
     await ensureSlackMessages(database);
 
-    const slackMessages = await fetchSlackMessages(channelIds);
+    let activeChannelIds = channelIds;
+    let slackMessages: NormalizedSlackMessage[] = [];
+    let slackError = "";
+
+    try {
+      slackMessages = await fetchSlackMessages(channelIds);
+    } catch (error) {
+      slackError = error instanceof Error ? error.message : "Unable to fetch configured Slack conversations.";
+    }
+
+    if (slackMessages.length === 0) {
+      try {
+        const discoveredChannelIds = await discoverReadableChannelIds();
+        if (discoveredChannelIds.length > 0 && discoveredChannelIds.join(",") !== channelIds.join(",")) {
+          const discoveredMessages = await fetchSlackMessages(discoveredChannelIds);
+          if (discoveredMessages.length > 0) {
+            activeChannelIds = discoveredChannelIds;
+            slackMessages = discoveredMessages;
+            slackError = "";
+          }
+        }
+      } catch (error) {
+        if (!slackError) slackError = error instanceof Error ? error.message : "Unable to discover readable Slack conversations.";
+      }
+    }
+
     await upsertSlackMessages(database, slackMessages);
 
     const result = await database.query(
@@ -509,7 +562,7 @@ export async function GET() {
       where source_channel_id = any($1::text[])
       order by slack_timestamp desc
     `,
-      [channelIds],
+      [activeChannelIds],
     );
 
     const messages = result.rows.map(row => ({
@@ -570,8 +623,8 @@ export async function GET() {
 
     const insights = [
       highRiskMessages.length
-        ? `${highRiskMessages.length} Slack messages mention High/Critical risk across ${channelIds.length} configured conversations, representing ${highRiskMessages[0].currency} ${sum(highRiskMessages.map(message => message.amount)).toLocaleString()} in contract value.`
-        : `No High/Critical Slack risks detected in ${channelIds.length} configured conversations.`,
+        ? `${highRiskMessages.length} Slack messages mention High/Critical risk across ${activeChannelIds.length} configured conversations, representing ${highRiskMessages[0].currency} ${sum(highRiskMessages.map(message => message.amount)).toLocaleString()} in contract value.`
+        : `No High/Critical Slack risks detected in ${activeChannelIds.length} configured conversations.`,
       expiringSoon.length
         ? `${expiringSoon.length} contracts have term dates inside 180 days; prioritize renewal outreach for ${expiringSoon[0].clientName}.`
         : "No contract term dates fall inside the next 180 days.",

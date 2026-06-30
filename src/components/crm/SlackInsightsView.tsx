@@ -41,6 +41,13 @@ type SlackInsightsResponse = {
   expiringSoon: SlackMessage[];
   topOpportunities: SlackMessage[];
   generatedAt: string;
+  source?: {
+    requestedChannelIds?: string[];
+    channelIds?: string[];
+    apiAvailable?: boolean;
+    error?: string | null;
+    fetchedMessages?: number;
+  };
 };
 
 const riskStyles: Record<string, { bg: string; color: string; border: string }> = {
@@ -182,6 +189,12 @@ export default function SlackInsightsView() {
           <StatCard label="High/Critical" value={String(data.summary.highRiskCount)} icon="lucide:triangle-alert" accent="#DC2626" />
           <StatCard label="Expiring soon" value={String(data.summary.expiringSoonCount)} icon="lucide:calendar-clock" accent="#EA580C" />
         </div>
+
+        {data.summary.totalMessages === 0 && data.source ? (
+          <div style={{ marginBottom: 18, border: "1px solid #FED7AA", background: "#FFF7ED", color: "#9A3412", borderRadius: 10, padding: "10px 12px", fontSize: 13, fontWeight: 700 }}>
+            Slack returned 0 messages. {data.source.error ? `Slack API: ${data.source.error}` : `Checked ${data.source.channelIds?.length || 0} readable conversation(s).`}
+          </div>
+        ) : null}
 
         <div style={{ display: "grid", gridTemplateColumns: "1.05fr .95fr", gap: 16, marginBottom: 16 }}>
           <Panel title="Client-facing mined insights">
