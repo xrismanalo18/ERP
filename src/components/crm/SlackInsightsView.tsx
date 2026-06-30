@@ -138,7 +138,7 @@ export default function SlackInsightsView() {
   if (loading) {
     return (
       <div style={{ height: "calc(100vh - 48px)", display: "grid", placeItems: "center", background: "#F3F4F6", color: "#475569", fontWeight: 700 }}>
-        Loading Slack contract mining insights…
+        Loading Slack channel insights...
       </div>
     );
   }
@@ -163,7 +163,7 @@ export default function SlackInsightsView() {
           <div>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 999, background: "#E0F2FE", color: "#0369A1", fontSize: 12, fontWeight: 800 }}>
               <Icon icon="lucide:message-square-text" width={14} height={14} />
-              Slack data mining from PostgreSQL
+              Slack insights from D0BDPRDE95H and D0BDSPWTVUM
             </div>
             <h1 style={{ margin: "12px 0 6px", color: "#0F172A", fontSize: 30, lineHeight: 1.1 }}>Slack Insights</h1>
           </div>
@@ -235,7 +235,7 @@ export default function SlackInsightsView() {
                       <strong style={{ color: "#0F172A", fontSize: 13 }}>{message.clientName}</strong>
                       <span style={{ color: "#C2410C", fontSize: 12, fontWeight: 800 }}>{message.daysToTerm} days</span>
                     </div>
-                    <div style={{ color: "#64748B", fontSize: 12, marginTop: 4 }}>{message.contractId} · Term date {formatDate(message.termDate)}</div>
+                    <div style={{ color: "#64748B", fontSize: 12, marginTop: 4 }}>{message.contractId} - Term date {formatDate(message.termDate)}</div>
                   </div>
                 ))}
               </div>
@@ -248,7 +248,7 @@ export default function SlackInsightsView() {
                 <div key={message.id} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 12, padding: 12, borderRadius: 14, background: "#F0FDF4", border: "1px solid #BBF7D0" }}>
                   <div>
                     <div style={{ color: "#0F172A", fontSize: 13, fontWeight: 800 }}>{message.clientName}</div>
-                    <div style={{ color: "#64748B", fontSize: 12, marginTop: 4 }}>{message.hardwareCategory} · {message.stage}</div>
+                    <div style={{ color: "#64748B", fontSize: 12, marginTop: 4 }}>{message.hardwareCategory} - {message.stage}</div>
                   </div>
                   <strong style={{ color: "#047857", fontSize: 13 }}>{formatCurrency(message.amount)}</strong>
                 </div>
@@ -257,7 +257,7 @@ export default function SlackInsightsView() {
           </Panel>
         </div>
 
-        <Panel title="Latest Slack contract messages from PostgreSQL">
+        <Panel title="Latest Slack messages from configured channels">
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, minWidth: 980 }}>
               <thead>
@@ -276,7 +276,7 @@ export default function SlackInsightsView() {
                       <td style={{ padding: 10, borderBottom: "1px solid #EEF2F7", color: "#0F172A", fontSize: 13, fontWeight: 800 }}>{message.clientName}</td>
                       <td style={{ padding: 10, borderBottom: "1px solid #EEF2F7", color: "#475569", fontSize: 12 }}>{message.contractId}</td>
                       <td style={{ padding: 10, borderBottom: "1px solid #EEF2F7", color: "#475569", fontSize: 12 }}>{message.hardwareCategory}</td>
-                      <td style={{ padding: 10, borderBottom: "1px solid #EEF2F7", color: "#475569", fontSize: 12 }}>{formatDate(message.startDate)} → {formatDate(message.termDate)}</td>
+                      <td style={{ padding: 10, borderBottom: "1px solid #EEF2F7", color: "#475569", fontSize: 12 }}>{formatDate(message.startDate)}{" -> "}{formatDate(message.termDate)}</td>
                       <td style={{ padding: 10, borderBottom: "1px solid #EEF2F7", color: "#0F172A", fontSize: 12, fontWeight: 800 }}>{formatCurrency(message.amount)}</td>
                       <td style={{ padding: 10, borderBottom: "1px solid #EEF2F7" }}>
                         <span style={{ display: "inline-flex", borderRadius: 999, border: `1px solid ${risk.border}`, background: risk.bg, color: risk.color, padding: "4px 9px", fontSize: 11, fontWeight: 900 }}>{message.riskLevel}</span>

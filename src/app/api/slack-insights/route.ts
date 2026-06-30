@@ -1,10 +1,15 @@
+import OpenAI from "openai";
 import { NextResponse } from "next/server";
 import pg from "pg";
 
 export const runtime = "nodejs";
 
-type SlackSeedMessage = {
+type RiskLevel = "Low" | "Medium" | "High" | "Critical";
+type Sentiment = "Positive" | "Neutral" | "Negative";
+
+type NormalizedSlackMessage = {
   sourceMessageId: string;
+  sourceChannelId: string;
   channel: string;
   sender: string;
   clientName: string;
@@ -15,212 +20,71 @@ type SlackSeedMessage = {
   termDate: string;
   amount: number;
   currency: string;
-  riskLevel: "Low" | "Medium" | "High" | "Critical";
-  sentiment: "Positive" | "Neutral" | "Negative";
+  riskLevel: RiskLevel;
+  sentiment: Sentiment;
   stage: string;
   slackTimestamp: string;
 };
 
-const SAMPLE_MESSAGES: SlackSeedMessage[] = [
-  {
-    sourceMessageId: "slack-it-hw-0001",
-    channel: "#enterprise-renewals",
-    sender: "Maya Chen",
-    clientName: "Silverline Bank",
-    contractId: "HW-2026-0142",
-    hardwareCategory: "Endpoint refresh",
-    messageText:
-      "Silverline Bank asked for final pricing on 420 ThinkPad laptops, docks, and warranty uplifts. Start date 2026-07-01, term ends 2027-06-30, amount $684,000. Procurement is positive but CFO approval is still pending this week.",
-    startDate: "2026-07-01",
-    termDate: "2027-06-30",
-    amount: 684000,
-    currency: "USD",
-    riskLevel: "High",
-    sentiment: "Neutral",
-    stage: "CFO approval",
-    slackTimestamp: "2026-06-18T14:24:00Z",
-  },
-  {
-    sourceMessageId: "slack-it-hw-0002",
-    channel: "#network-deals",
-    sender: "Andre Patel",
-    clientName: "NorthBridge Technology",
-    contractId: "HW-2026-0178",
-    hardwareCategory: "Firewall and switches",
-    messageText:
-      "NorthBridge wants 18 firewalls and 44 managed switches for the branch modernization. Contract start 2026-08-15, term 24 months ending 2028-08-14, amount $912,500. Legal requested stronger replacement SLA language before signature.",
-    startDate: "2026-08-15",
-    termDate: "2028-08-14",
-    amount: 912500,
-    currency: "USD",
-    riskLevel: "Medium",
-    sentiment: "Neutral",
-    stage: "Legal review",
-    slackTimestamp: "2026-06-19T16:05:00Z",
-  },
-  {
-    sourceMessageId: "slack-it-hw-0003",
-    channel: "#hardware-pipeline",
-    sender: "Lena Brooks",
-    clientName: "BluePeak IT Solutions",
-    contractId: "HW-2026-0191",
-    hardwareCategory: "Storage array",
-    messageText:
-      "BluePeak expanded the storage array ask from 280TB to 420TB after the DR workshop. Start date 2026-09-01, term date 2029-08-31, amount $1,340,000. Strong executive sponsor; upsell likely if implementation slots are protected.",
-    startDate: "2026-09-01",
-    termDate: "2029-08-31",
-    amount: 1340000,
-    currency: "USD",
-    riskLevel: "Low",
-    sentiment: "Positive",
-    stage: "Expansion proposal",
-    slackTimestamp: "2026-06-20T13:45:00Z",
-  },
-  {
-    sourceMessageId: "slack-it-hw-0004",
-    channel: "#deal-desk",
-    sender: "Jon Rivera",
-    clientName: "Apex Manufacturing",
-    contractId: "HW-2026-0207",
-    hardwareCategory: "Rugged tablets",
-    messageText:
-      "Apex Manufacturing needs 260 rugged tablets for warehouse scanning. Start 2026-07-20, term ending 2028-07-19, contract amount $416,800. Competitor quote is 6% lower; we need bundle discount approval by Friday.",
-    startDate: "2026-07-20",
-    termDate: "2028-07-19",
-    amount: 416800,
-    currency: "USD",
-    riskLevel: "High",
-    sentiment: "Negative",
-    stage: "Competitive pricing",
-    slackTimestamp: "2026-06-21T18:12:00Z",
-  },
-  {
-    sourceMessageId: "slack-it-hw-0005",
-    channel: "#enterprise-renewals",
-    sender: "Priya Shah",
-    clientName: "Greenfield Clinics",
-    contractId: "HW-2026-0224",
-    hardwareCategory: "Clinical workstations",
-    messageText:
-      "Greenfield Clinics renewal covers 180 clinical workstations, privacy screens, and 3-year support. Start date 2026-07-10, term date 2029-07-09, amount $522,750. Client asked to add encryption-ready configuration for compliance.",
-    startDate: "2026-07-10",
-    termDate: "2029-07-09",
-    amount: 522750,
-    currency: "USD",
-    riskLevel: "Medium",
-    sentiment: "Positive",
-    stage: "Security configuration",
-    slackTimestamp: "2026-06-22T12:33:00Z",
-  },
-  {
-    sourceMessageId: "slack-it-hw-0006",
-    channel: "#supply-chain-alerts",
-    sender: "Noah Williams",
-    clientName: "Harbor Logistics",
-    contractId: "HW-2026-0236",
-    hardwareCategory: "Network edge devices",
-    messageText:
-      "Harbor Logistics is blocked by delivery timing for 96 edge routers. Contract start 2026-07-01, term 18 months ending 2027-12-31, amount $308,400. Vendor lead time slipped 21 days; client is worried about depot rollout.",
-    startDate: "2026-07-01",
-    termDate: "2027-12-31",
-    amount: 308400,
-    currency: "USD",
-    riskLevel: "Critical",
-    sentiment: "Negative",
-    stage: "Supply delay",
-    slackTimestamp: "2026-06-23T15:58:00Z",
-  },
-  {
-    sourceMessageId: "slack-it-hw-0007",
-    channel: "#hardware-pipeline",
-    sender: "Elena Garcia",
-    clientName: "Summit Retail Group",
-    contractId: "HW-2026-0249",
-    hardwareCategory: "POS terminals",
-    messageText:
-      "Summit Retail wants 740 POS terminals and receipt printers before holiday freeze. Start date 2026-08-01, term date 2028-07-31, amount $1,118,250. Budget owner confirmed funds; risk is installation capacity.",
-    startDate: "2026-08-01",
-    termDate: "2028-07-31",
-    amount: 1118250,
-    currency: "USD",
-    riskLevel: "Medium",
-    sentiment: "Positive",
-    stage: "Implementation planning",
-    slackTimestamp: "2026-06-24T11:10:00Z",
-  },
-  {
-    sourceMessageId: "slack-it-hw-0008",
-    channel: "#deal-desk",
-    sender: "Sam Okafor",
-    clientName: "Vertex Insurance",
-    contractId: "HW-2026-0255",
-    hardwareCategory: "VDI thin clients",
-    messageText:
-      "Vertex Insurance requested 530 VDI thin clients, monitors, and extended support. Start 2026-09-15, term ending 2029-09-14, amount $789,600. Security team likes the design, but procurement wants payment split across two fiscal quarters.",
-    startDate: "2026-09-15",
-    termDate: "2029-09-14",
-    amount: 789600,
-    currency: "USD",
-    riskLevel: "Medium",
-    sentiment: "Neutral",
-    stage: "Payment terms",
-    slackTimestamp: "2026-06-24T20:22:00Z",
-  },
-  {
-    sourceMessageId: "slack-it-hw-0009",
-    channel: "#network-deals",
-    sender: "Grace Kim",
-    clientName: "Cobalt Energy",
-    contractId: "HW-2026-0263",
-    hardwareCategory: "Data center servers",
-    messageText:
-      "Cobalt Energy is ready to sign for 36 GPU-capable servers if we preserve the quoted price through month end. Start date 2026-10-01, term 36 months ending 2029-09-30, amount $2,420,000. Excellent signal from CIO sponsor.",
-    startDate: "2026-10-01",
-    termDate: "2029-09-30",
-    amount: 2420000,
-    currency: "USD",
-    riskLevel: "Low",
-    sentiment: "Positive",
-    stage: "Ready to sign",
-    slackTimestamp: "2026-06-25T09:18:00Z",
-  },
-  {
-    sourceMessageId: "slack-it-hw-0010",
-    channel: "#enterprise-renewals",
-    sender: "Diego Santos",
-    clientName: "MetroGov Services",
-    contractId: "HW-2026-0276",
-    hardwareCategory: "Secure laptops",
-    messageText:
-      "MetroGov Services renewal for 310 secure laptops is at risk. Start 2026-07-05, term date 2027-07-04, amount $495,500. Public-sector compliance review added extra forms and the client may delay award until August.",
-    startDate: "2026-07-05",
-    termDate: "2027-07-04",
-    amount: 495500,
-    currency: "USD",
-    riskLevel: "Critical",
-    sentiment: "Negative",
-    stage: "Compliance review",
-    slackTimestamp: "2026-06-25T17:50:00Z",
-  },
-  {
-    sourceMessageId: "slack-it-hw-0011",
-    channel: "#supply-chain-alerts",
-    sender: "Hannah Lee",
-    clientName: "Orion Media",
-    contractId: "HW-2026-0281",
-    hardwareCategory: "Creative workstations",
-    messageText:
-      "Orion Media asked whether we can add 75 high-end creative workstations to the current quote. Start date 2026-08-10, term ending 2028-08-09, amount $612,900. This is a growth signal, but GPU inventory must be reserved now.",
-    startDate: "2026-08-10",
-    termDate: "2028-08-09",
-    amount: 612900,
-    currency: "USD",
-    riskLevel: "Medium",
-    sentiment: "Positive",
-    stage: "Inventory reservation",
-    slackTimestamp: "2026-06-26T10:42:00Z",
-  },
-];
+type SlackHistoryMessage = {
+  ts?: string;
+  text?: string;
+  user?: string;
+  username?: string;
+  bot_id?: string;
+  subtype?: string;
+};
+
+type SlackApiResponse<T> = T & {
+  ok: boolean;
+  error?: string;
+};
+
+type SlackConversationHistory = SlackApiResponse<{
+  messages?: SlackHistoryMessage[];
+  has_more?: boolean;
+  response_metadata?: { next_cursor?: string };
+}>;
+
+type SlackConversationInfo = SlackApiResponse<{
+  channel?: { id?: string; name?: string; is_im?: boolean };
+}>;
+
+type SlackUserInfo = SlackApiResponse<{
+  user?: {
+    id?: string;
+    name?: string;
+    real_name?: string;
+    profile?: { display_name?: string; real_name?: string };
+  };
+}>;
+
+type AiExtraction = {
+  sourceMessageId: string;
+  clientName?: string;
+  contractId?: string;
+  hardwareCategory?: string;
+  startDate?: string;
+  termDate?: string;
+  amount?: number;
+  currency?: string;
+  riskLevel?: RiskLevel;
+  sentiment?: Sentiment;
+  stage?: string;
+};
+
+const DEFAULT_CHANNEL_IDS = ["D0BDPRDE95H", "D0BDSPWTVUM"];
+const SLACK_HISTORY_LIMIT = 200;
+const DATE_RE = /\b(20\d{2}-\d{2}-\d{2})\b/g;
+const CONTRACT_RE = /\b([A-Z]{2,}[-_ ]?\d{4,}[-_ ]?\d*)\b/;
+const AMOUNT_RE = /(?:\$|usd\s*)\s*([0-9][0-9,]*(?:\.\d{1,2})?)|([0-9][0-9,]*(?:\.\d{1,2})?)\s*(?:usd|dollars)\b/i;
+
+function configuredChannelIds() {
+  return (process.env.SLACK_INSIGHTS_CHANNEL_IDS || DEFAULT_CHANNEL_IDS.join(","))
+    .split(",")
+    .map(channel => channel.trim())
+    .filter(Boolean);
+}
 
 function postgresClient() {
   if (!process.env.POSTGRES_URL) throw new Error("POSTGRES_URL is not configured.");
@@ -258,15 +122,290 @@ async function ensureSlackMessages(database: pg.Client) {
     );
   `);
 
-  for (const message of SAMPLE_MESSAGES) {
+  await database.query(`
+    alter table public.slack_contract_messages
+      add column if not exists source_channel_id text,
+      add column if not exists slack_sender_id text,
+      add column if not exists raw_slack_message jsonb;
+  `);
+}
+
+async function slackRequest<T>(method: string, params: Record<string, string | number | undefined>) {
+  const token = process.env.SLACK_BOT_TOKEN;
+  if (!token) throw new Error("SLACK_BOT_TOKEN is not configured.");
+
+  const url = new URL(`https://slack.com/api/${method}`);
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== "") url.searchParams.set(key, String(value));
+  }
+
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  const payload = (await response.json()) as SlackApiResponse<T>;
+  if (!response.ok || !payload.ok) {
+    throw new Error(`Slack ${method} failed: ${payload.error || response.statusText}`);
+  }
+  return payload;
+}
+
+async function getChannelLabel(channelId: string) {
+  try {
+    const payload = await slackRequest<SlackConversationInfo>("conversations.info", { channel: channelId });
+    const name = payload.channel?.name;
+    return name ? `#${name}` : channelId;
+  } catch {
+    return channelId;
+  }
+}
+
+async function getSenderLabel(userId: string | undefined, cache: Map<string, string>) {
+  if (!userId) return "Slack user";
+  if (cache.has(userId)) return cache.get(userId) as string;
+
+  try {
+    const payload = await slackRequest<SlackUserInfo>("users.info", { user: userId });
+    const user = payload.user;
+    const label = user?.profile?.display_name || user?.profile?.real_name || user?.real_name || user?.name || userId;
+    cache.set(userId, label);
+    return label;
+  } catch {
+    cache.set(userId, userId);
+    return userId;
+  }
+}
+
+async function fetchSlackMessages(channelIds: string[]) {
+  const senderCache = new Map<string, string>();
+  const normalized: NormalizedSlackMessage[] = [];
+
+  for (const channelId of channelIds) {
+    const channelLabel = await getChannelLabel(channelId);
+    let cursor = "";
+    let page = 0;
+
+    do {
+      const payload = await slackRequest<SlackConversationHistory>("conversations.history", {
+        channel: channelId,
+        limit: SLACK_HISTORY_LIMIT,
+        cursor,
+      });
+
+      for (const message of payload.messages || []) {
+        const text = (message.text || "").replace(/<mailto:([^|>]+)\|([^>]+)>/g, "$2").replace(/<([^|>]+)\|([^>]+)>/g, "$2").trim();
+        if (!message.ts || !text || message.subtype === "message_deleted") continue;
+
+        const slackTimestamp = slackTsToIso(message.ts);
+        normalized.push({
+          ...extractContractFields(text, slackTimestamp),
+          sourceMessageId: `${channelId}:${message.ts}`,
+          sourceChannelId: channelId,
+          channel: channelLabel,
+          sender: message.username || (await getSenderLabel(message.user, senderCache)) || message.bot_id || "Slack user",
+          messageText: text,
+          slackTimestamp,
+        });
+      }
+
+      cursor = payload.response_metadata?.next_cursor || "";
+      page += 1;
+    } while (cursor && page < 5);
+  }
+
+  return enrichWithOpenAI(normalized);
+}
+
+function slackTsToIso(ts: string) {
+  const seconds = Number(ts.split(".")[0]);
+  return new Date(seconds * 1000).toISOString();
+}
+
+function addDays(dateText: string, days: number) {
+  const date = new Date(`${dateText}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function extractContractFields(text: string, slackTimestamp: string) {
+  const lower = text.toLowerCase();
+  const slackDate = slackTimestamp.slice(0, 10);
+  const dates = Array.from(text.matchAll(DATE_RE)).map(match => match[1]);
+  const amountMatch = text.match(AMOUNT_RE);
+  const amountText = amountMatch?.[1] || amountMatch?.[2] || "0";
+  const amount = Number(amountText.replace(/,/g, "")) || 0;
+  const contractId = text.match(CONTRACT_RE)?.[1]?.replace(/\s+/g, "-") || "Unspecified";
+
+  let startDate = dates[0] || slackDate;
+  let termDate = dates[1] || addDays(startDate, 365);
+  if (dates.length === 1 && /\b(term|end|ending|expires|expiration|renewal)\b/i.test(text)) {
+    startDate = slackDate;
+    termDate = dates[0];
+  }
+
+  return {
+    clientName: extractClientName(text),
+    contractId,
+    hardwareCategory: extractCategory(lower),
+    startDate,
+    termDate,
+    amount,
+    currency: "USD",
+    riskLevel: extractRisk(lower),
+    sentiment: extractSentiment(lower),
+    stage: extractStage(lower),
+  };
+}
+
+function extractClientName(text: string) {
+  const beforeVerb = text.match(/^([A-Z][A-Za-z0-9&.' -]{2,80}?)\s+(?:asked|asks|wants|requested|needs|renewal|is|has|expanded|confirmed|flagged|reported)\b/);
+  if (beforeVerb?.[1]) return beforeVerb[1].trim();
+
+  const labeled = text.match(/\b(?:client|customer|account|company)\s*[:=-]\s*([A-Z][A-Za-z0-9&.' -]{2,80})/i);
+  if (labeled?.[1]) return labeled[1].trim().replace(/[.,;:].*$/, "");
+
+  return "Unknown client";
+}
+
+function extractCategory(lower: string) {
+  const categories: Array<[string, string[]]> = [
+    ["Endpoint refresh", ["laptop", "desktop", "endpoint", "workstation", "monitor", "dock"]],
+    ["Network hardware", ["router", "switch", "firewall", "network", "edge"]],
+    ["Storage and servers", ["storage", "server", "gpu", "data center", "datacenter"]],
+    ["POS and retail hardware", ["pos", "terminal", "printer", "scanner"]],
+    ["Security hardware", ["secure", "mfa", "encryption", "security"]],
+    ["Support services", ["support", "sla", "warranty", "managed service"]],
+  ];
+  return categories.find(([, terms]) => terms.some(term => lower.includes(term)))?.[0] || "General contract";
+}
+
+function extractRisk(lower: string): RiskLevel {
+  if (/\b(critical|blocked|blocker|at risk|churn|cancel|lost|delay award|cannot proceed)\b/.test(lower)) return "Critical";
+  if (/\b(risk|concern|competitor|approval pending|legal requested|slipped|delay|escalat)\b/.test(lower)) return "High";
+  if (/\b(review|pending|waiting|capacity|inventory|payment|budget|procurement)\b/.test(lower)) return "Medium";
+  return "Low";
+}
+
+function extractSentiment(lower: string): Sentiment {
+  if (/\b(positive|ready to sign|confirmed|approved|excellent|growth|upsell|likes|strong)\b/.test(lower)) return "Positive";
+  if (/\b(negative|worried|blocked|risk|delay|competitor|lower|concern|cancel|churn)\b/.test(lower)) return "Negative";
+  return "Neutral";
+}
+
+function extractStage(lower: string) {
+  const stages: Array<[string, string[]]> = [
+    ["Legal review", ["legal", "terms", "redline"]],
+    ["Approval", ["approval", "approved", "cfo", "executive"]],
+    ["Procurement", ["procurement", "purchase order", "po ", "vendor"]],
+    ["Security review", ["security", "compliance", "encryption", "mfa"]],
+    ["Competitive pricing", ["competitor", "discount", "pricing", "quote"]],
+    ["Implementation planning", ["implementation", "install", "rollout", "capacity"]],
+    ["Ready to sign", ["ready to sign", "signature", "sign this"]],
+    ["Renewal", ["renewal", "term date", "expires", "expiration"]],
+  ];
+  return stages.find(([, terms]) => terms.some(term => lower.includes(term)))?.[0] || "Message review";
+}
+
+async function enrichWithOpenAI(messages: NormalizedSlackMessage[]) {
+  if (!process.env.OPENAI_API_KEY || messages.length === 0) return messages;
+
+  const candidates = messages
+    .filter(message => message.clientName === "Unknown client" || message.contractId === "Unspecified" || message.amount === 0)
+    .slice(0, 50);
+  if (candidates.length === 0) return messages;
+
+  try {
+    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const response = await client.responses.create({
+      model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
+      input: [
+        {
+          role: "system",
+          content:
+            "Extract CRM contract fields from Slack messages. Return strict JSON with an items array. Use null for unknown values. Risk must be Low, Medium, High, or Critical. Sentiment must be Positive, Neutral, or Negative.",
+        },
+        {
+          role: "user",
+          content: JSON.stringify({
+            items: candidates.map(message => ({
+              sourceMessageId: message.sourceMessageId,
+              text: message.messageText,
+              slackTimestamp: message.slackTimestamp,
+            })),
+          }),
+        },
+      ],
+    });
+    const parsed = JSON.parse(response.output_text || "{}") as { items?: AiExtraction[] };
+    const byId = new Map((parsed.items || []).map(item => [item.sourceMessageId, item]));
+
+    return messages.map(message => {
+      const extracted = byId.get(message.sourceMessageId);
+      if (!extracted) return message;
+      return {
+        ...message,
+        clientName: validText(extracted.clientName) || message.clientName,
+        contractId: validText(extracted.contractId) || message.contractId,
+        hardwareCategory: validText(extracted.hardwareCategory) || message.hardwareCategory,
+        startDate: validDate(extracted.startDate) || message.startDate,
+        termDate: validDate(extracted.termDate) || message.termDate,
+        amount: typeof extracted.amount === "number" && extracted.amount >= 0 ? extracted.amount : message.amount,
+        currency: validText(extracted.currency) || message.currency,
+        riskLevel: validRisk(extracted.riskLevel) || message.riskLevel,
+        sentiment: validSentiment(extracted.sentiment) || message.sentiment,
+        stage: validText(extracted.stage) || message.stage,
+      };
+    });
+  } catch {
+    return messages;
+  }
+}
+
+function validText(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : "";
+}
+
+function validDate(value: unknown) {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : "";
+}
+
+function validRisk(value: unknown): RiskLevel | "" {
+  return value === "Low" || value === "Medium" || value === "High" || value === "Critical" ? value : "";
+}
+
+function validSentiment(value: unknown): Sentiment | "" {
+  return value === "Positive" || value === "Neutral" || value === "Negative" ? value : "";
+}
+
+async function upsertSlackMessages(database: pg.Client, messages: NormalizedSlackMessage[]) {
+  for (const message of messages) {
     await database.query(
       `insert into public.slack_contract_messages
-        (source_message_id, channel, sender, client_name, contract_id, hardware_category, message_text,
-         start_date, term_date, amount, currency, risk_level, sentiment, stage, slack_timestamp)
-       values ($1, $2, $3, $4, $5, $6, $7, $8::date, $9::date, $10, $11, $12, $13, $14, $15::timestamptz)
-       on conflict (source_message_id) do nothing`,
+        (source_message_id, source_channel_id, slack_sender_id, channel, sender, client_name, contract_id, hardware_category, message_text,
+         start_date, term_date, amount, currency, risk_level, sentiment, stage, slack_timestamp, raw_slack_message, updated_at)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::date, $11::date, $12, $13, $14, $15, $16, $17::timestamptz, $18::jsonb, now())
+       on conflict (source_message_id) do update set
+         source_channel_id = excluded.source_channel_id,
+         channel = excluded.channel,
+         sender = excluded.sender,
+         client_name = excluded.client_name,
+         contract_id = excluded.contract_id,
+         hardware_category = excluded.hardware_category,
+         message_text = excluded.message_text,
+         start_date = excluded.start_date,
+         term_date = excluded.term_date,
+         amount = excluded.amount,
+         currency = excluded.currency,
+         risk_level = excluded.risk_level,
+         sentiment = excluded.sentiment,
+         stage = excluded.stage,
+         slack_timestamp = excluded.slack_timestamp,
+         raw_slack_message = excluded.raw_slack_message,
+         updated_at = now()`,
       [
         message.sourceMessageId,
+        message.sourceChannelId,
+        message.sender,
         message.channel,
         message.sender,
         message.clientName,
@@ -281,6 +420,7 @@ async function ensureSlackMessages(database: pg.Client) {
         message.sentiment,
         message.stage,
         message.slackTimestamp,
+        JSON.stringify(message),
       ],
     );
   }
@@ -309,16 +449,47 @@ function keywordCount(messages: Array<{ messageText: string }>, keywords: string
   }, 0);
 }
 
+function emptySlackInsights(channelIds: string[]) {
+  return {
+    messages: [],
+    summary: {
+      totalMessages: 0,
+      totalAmount: 0,
+      activeClients: 0,
+      highRiskCount: 0,
+      negativeCount: 0,
+      expiringSoonCount: 0,
+    },
+    insights: [],
+    riskCounts: [],
+    categoryInsights: [],
+    blockerSignals: [],
+    expiringSoon: [],
+    topOpportunities: [],
+    generatedAt: new Date().toISOString(),
+    source: {
+      channelIds,
+      apiAvailable: false,
+    },
+  };
+}
 export async function GET() {
   const database = postgresClient();
+  const channelIds = configuredChannelIds();
+
   try {
     await database.connect();
     await ensureSlackMessages(database);
 
-    const result = await database.query(`
+    const slackMessages = await fetchSlackMessages(channelIds);
+    await upsertSlackMessages(database, slackMessages);
+
+    const result = await database.query(
+      `
       select
         id,
         source_message_id,
+        source_channel_id,
         channel,
         sender,
         client_name,
@@ -335,8 +506,11 @@ export async function GET() {
         slack_timestamp,
         created_at
       from public.slack_contract_messages
+      where source_channel_id = any($1::text[])
       order by slack_timestamp desc
-    `);
+    `,
+      [channelIds],
+    );
 
     const messages = result.rows.map(row => ({
       id: row.id as string,
@@ -383,10 +557,10 @@ export async function GET() {
 
     const blockerSignals = [
       { label: "Approval / legal", count: keywordCount(messages, ["approval", "legal", "forms", "review"]) },
-      { label: "Competitive pressure", count: keywordCount(messages, ["competitor", "quote is", "lower"]) },
-      { label: "Supply / delivery", count: keywordCount(messages, ["lead time", "delivery", "inventory", "capacity"]) },
+      { label: "Competitive pressure", count: keywordCount(messages, ["competitor", "quote is", "lower", "discount"]) },
+      { label: "Supply / delivery", count: keywordCount(messages, ["lead time", "delivery", "inventory", "capacity", "slipped"]) },
       { label: "Budget / payment", count: keywordCount(messages, ["budget", "payment", "fiscal", "funds"]) },
-      { label: "Security / compliance", count: keywordCount(messages, ["security", "compliance", "encryption"]) },
+      { label: "Security / compliance", count: keywordCount(messages, ["security", "compliance", "encryption", "mfa"]) },
     ].filter(signal => signal.count > 0).sort((a, b) => b.count - a.count);
 
     const topOpportunities = messages
@@ -396,8 +570,8 @@ export async function GET() {
 
     const insights = [
       highRiskMessages.length
-        ? `${highRiskMessages.length} Slack messages mention High/Critical risk, representing ${highRiskMessages[0].currency} ${sum(highRiskMessages.map(message => message.amount)).toLocaleString()} in contract value.`
-        : "No High/Critical Slack risks detected in the current message set.",
+        ? `${highRiskMessages.length} Slack messages mention High/Critical risk across ${channelIds.length} configured conversations, representing ${highRiskMessages[0].currency} ${sum(highRiskMessages.map(message => message.amount)).toLocaleString()} in contract value.`
+        : `No High/Critical Slack risks detected in ${channelIds.length} configured conversations.`,
       expiringSoon.length
         ? `${expiringSoon.length} contracts have term dates inside 180 days; prioritize renewal outreach for ${expiringSoon[0].clientName}.`
         : "No contract term dates fall inside the next 180 days.",
@@ -414,7 +588,7 @@ export async function GET() {
       summary: {
         totalMessages: messages.length,
         totalAmount,
-        activeClients: new Set(messages.map(message => message.clientName)).size,
+        activeClients: new Set(messages.map(message => message.clientName).filter(client => client !== "Unknown client")).size,
         highRiskCount: highRiskMessages.length,
         negativeCount: negativeMessages.length,
         expiringSoonCount: expiringSoon.length,
@@ -427,11 +601,8 @@ export async function GET() {
       topOpportunities,
       generatedAt: new Date().toISOString(),
     });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to load Slack insights." },
-      { status: 500 },
-    );
+  } catch {
+    return NextResponse.json(emptySlackInsights(channelIds));
   } finally {
     await database.end().catch(() => undefined);
   }
